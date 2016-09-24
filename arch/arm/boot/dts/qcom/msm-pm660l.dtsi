@@ -203,6 +203,7 @@
 			compatible = "qcom,leds-qpnp";
 			reg = <0xd000 0x100>;
 			label = "rgb";
+			qcom,rgb-sync;
 
 			red_led: qcom,rgb_0 {
 				label = "rgb";
@@ -214,10 +215,13 @@
 				qcom,default-state = "off";
 				linux,name = "red";
 				qcom,start-idx = <0>;
-				qcom,idx-len = <22>;
+				qcom,idx-len = <8>;
+				qcom,pause-lo = <500>;
+				qcom,pause-hi = <500>;
 				qcom,duty-pcts =
-					[01 0a 14 1e 28 32 3c 46 50 5a 64
-					64 5a 50 46 3c 32 28 1e 14 0a 01];
+					[00 0E 1C 2A 38 46 54 64];
+				qcom,lut-flags = <31>; /* loop, ramp up, reverse, pause hi, pause lo */
+				qcom,ramp-step-ms = <50>;
 				qcom,use-blink;
 			};
 
@@ -230,6 +234,15 @@
 				qcom,max-current = <12>;
 				qcom,default-state = "off";
 				linux,name = "green";
+				qcom,start-idx = <0>;
+				qcom,idx-len = <8>;
+				qcom,pause-lo = <500>;
+				qcom,pause-hi = <500>;
+				qcom,duty-pcts =
+					[00 0E 1C 2A 38 46 54 64];
+				qcom,lut-flags = <31>; /* loop, ramp up, reverse, pause hi, pause lo */
+				qcom,ramp-step-ms = <50>;
+				qcom,use-blink;
 			};
 
 			blue_led: qcom,rgb_2 {
@@ -241,6 +254,15 @@
 				qcom,max-current = <12>;
 				qcom,default-state = "off";
 				linux,name = "blue";
+				qcom,start-idx = <0>;
+				qcom,idx-len = <8>;
+				qcom,pause-lo = <500>;
+				qcom,pause-hi = <500>;
+				qcom,duty-pcts =
+					[00 0E 1C 2A 38 46 54 64];
+				qcom,lut-flags = <31>; /* loop, ramp up, reverse, pause hi, pause lo */
+				qcom,ramp-step-ms = <50>;
+				qcom,use-blink;
 			};
 		};
 
