@@ -97,7 +97,9 @@
 
 #define WMA_FW_TIME_SYNC_TIMER 60000 /* 1 min */
 
+#ifdef TRACE_RECORD
 uint8_t *mac_trace_get_wma_msg_string(uint16_t wmaMsg);
+#endif
 static uint32_t g_fw_wlan_feat_caps;
 /**
  * wma_get_fw_wlan_feat_caps() - get fw feature capablity

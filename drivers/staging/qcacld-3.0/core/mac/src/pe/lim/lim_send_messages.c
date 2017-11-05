@@ -545,12 +545,14 @@ QDF_STATUS lim_send_mode_update(tpAniSirGlobal pMac,
 	msgQ.bodyval = 0;
 	pe_debug("Sending WMA_UPDATE_OP_MODE, op_mode %d, sta_id %d",
 			pVhtOpMode->opMode, pVhtOpMode->staId);
+#ifdef LIM_TRACE_RECORD
 	if (NULL == psessionEntry)
 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
 	else
 		MTRACE(mac_trace_msg_tx(pMac,
 					psessionEntry->peSessionId,
 					msgQ.type));
+#endif
 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
 	if (QDF_STATUS_SUCCESS != retCode) {
 		qdf_mem_free(pVhtOpMode);
@@ -580,12 +582,14 @@ QDF_STATUS lim_send_rx_nss_update(tpAniSirGlobal pMac,
 	msgQ.bodyptr = pRxNss;
 	msgQ.bodyval = 0;
 	pe_debug("Sending WMA_UPDATE_RX_NSS");
+#ifdef LIM_TRACE_RECORD
 	if (NULL == psessionEntry)
 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
 	else
 		MTRACE(mac_trace_msg_tx(pMac,
 					psessionEntry->peSessionId,
 					msgQ.type));
+#endif
 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
 	if (QDF_STATUS_SUCCESS != retCode) {
 		qdf_mem_free(pRxNss);
@@ -617,12 +621,14 @@ QDF_STATUS lim_set_membership(tpAniSirGlobal pMac,
 	msgQ.bodyptr = pMembership;
 	msgQ.bodyval = 0;
 	pe_debug("Sending WMA_UPDATE_MEMBERSHIP");
+#ifdef LIM_TRACE_RECORD
 	if (NULL == psessionEntry)
 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
 	else
 		MTRACE(mac_trace_msg_tx(pMac,
 					psessionEntry->peSessionId,
 					msgQ.type));
+#endif
 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
 	if (QDF_STATUS_SUCCESS != retCode) {
 		qdf_mem_free(pMembership);
@@ -653,12 +659,14 @@ QDF_STATUS lim_set_user_pos(tpAniSirGlobal pMac,
 	msgQ.bodyptr = pUserPos;
 	msgQ.bodyval = 0;
 	pe_debug("Sending WMA_UPDATE_USERPOS");
+#ifdef LIM_TRACE_RECORD
 	if (NULL == psessionEntry)
 		MTRACE(mac_trace_msg_tx(pMac, NO_SESSION, msgQ.type));
 	else
 		MTRACE(mac_trace_msg_tx(pMac,
 					psessionEntry->peSessionId,
 					msgQ.type));
+#endif
 	retCode = wma_post_ctrl_msg(pMac, &msgQ);
 	if (QDF_STATUS_SUCCESS != retCode) {
 		qdf_mem_free(pUserPos);
