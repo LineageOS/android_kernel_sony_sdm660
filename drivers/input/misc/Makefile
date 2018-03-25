@@ -83,3 +83,4 @@ obj-$(CONFIG_INPUT_PIXART_OTS_PAT9125_SWITCH)	+= ots_pat9125/
 obj-$(CONFIG_INPUT_STMVL53L0)                 += vl53L0/
 obj-y					+= egistec/
 obj-y					+= fpc1020/
+obj-y					+= hall_sensor.o
