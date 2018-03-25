@@ -993,4 +993,10 @@ config EXT_ANC
 	 This option enables support for anti-noise cnacellation
 	 on Sensor DSP.
 
+config SECURITY_STATUS
+	bool "Get security_status"
+	help
+	  Gets security status by checking oemandroidboot.securityflags
+	  parameter.
+
 source "drivers/soc/qcom/memshare/Kconfig"
