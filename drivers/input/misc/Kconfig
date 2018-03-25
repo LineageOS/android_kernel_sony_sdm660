@@ -324,6 +324,10 @@ config INPUT_FP_EGIS
        bool "Fingerprint EGIS device"
        default y
 
+config INPUT_FP_FPC1020
+       bool "Fingerprint FPC1020 device"
+       default y
+
 config INPUT_WISTRON_BTNS
 	tristate "x86 Wistron laptop button interface"
 	depends on X86_32
