@@ -301,6 +301,14 @@ struct fg_batt_props {
 	int		float_volt_uv;
 	int		vbatt_full_mv;
 	int		fastchg_curr_ma;
+	bool		jeita_en_fvc;
+	bool		jeita_en_ccc;
+	bool		jeita_en_hot_sl_fvc;
+	bool		jeita_en_cold_sl_fvc;
+	bool		jeita_en_hot_sl_ccc;
+	bool		jeita_en_cold_sl_ccc;
+	int		jeita_fvc_config;
+	int		jeita_ccc_config;
 };
 
 struct fg_cyc_ctr_data {
@@ -438,6 +446,7 @@ struct fg_chip {
 	int			last_recharge_volt_mv;
 	int			delta_temp_irq_count;
 	int			esr_timer_charging_default[NUM_ESR_TIMERS];
+	int			batt_num; // CEI comment, battery health feature
 	enum slope_limit_status	slope_limit_sts;
 	enum esr_filter_status	esr_flt_sts;
 	bool			profile_available;
@@ -454,6 +463,7 @@ struct fg_chip {
 	bool			use_ima_single_mode;
 	bool			qnovo_enable;
 	bool			suspended;
+	bool			cei_alien_battery;
 	struct completion	soc_update;
 	struct completion	soc_ready;
 	struct delayed_work	profile_load_work;
@@ -463,6 +473,10 @@ struct fg_chip {
 	struct work_struct	esr_filter_work;
 	struct alarm		esr_filter_alarm;
 	ktime_t			last_delta_temp_time;
+	// CEI comment, battery health feature S
+	bool 			fake_charge_full;
+	bool			fake_charge_full_design;
+	// CEI comment, battery health feature E
 };
 
 /* Debugfs data structures are below */

@@ -22,6 +22,9 @@
 #include <linux/qpnp/qpnp-revid.h>
 #include "fg-core.h"
 #include "fg-reg.h"
+#include "smb-reg.h"
+#include <linux/cei_hw_id.h>
+#include <linux/random.h>
 
 #define FG_GEN3_DEV_NAME	"qcom,fg-gen3"
 
@@ -146,6 +149,7 @@
 #define FLOAT_VOLT_v2_WORD		16
 #define FLOAT_VOLT_v2_OFFSET		2
 
+// SM12 330k, SM12 15k, SM22 330k
 static int fg_decode_voltage_15b(struct fg_sram_param *sp,
 	enum fg_sram_param_id id, int val);
 static int fg_decode_value_16b(struct fg_sram_param *sp,
@@ -405,8 +409,47 @@ module_param_named(
 	sram_dump_period_ms, fg_sram_dump_period_ms, int, S_IRUSR | S_IWUSR
 );
 
+char cei_mb_sm12[] = "SM12";
+char cei_mb_sm22[] = "SM22";
+
 static int fg_restart;
 static bool fg_sram_dump;
+static int CEI_Mask_Temp = 999;
+
+static ssize_t show_CEIMaskTemp(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, 20, "%d\n", CEI_Mask_Temp);
+}
+
+static ssize_t store_CEIMaskTemp(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct power_supply *batt_psy;
+	struct fg_chip *chip;
+	int result = 0;
+
+	batt_psy = power_supply_get_by_name("battery");
+	if (!batt_psy) {
+		pr_err("bms psy not found\n");
+		return -ENODEV;
+	}
+
+	chip = power_supply_get_drvdata(batt_psy);
+
+	if (chip->batt_psy == NULL) {
+		pr_err("Rex chip->batt_psy = NULL\n");
+		return 0;
+	}
+
+	result = kstrtoint(buf, 0, &CEI_Mask_Temp);
+	if (result != 0) {
+		pr_err("CEI_Mask_Temp convert fail result=%d\n", result);
+		return 0;
+	}
+
+	schedule_work(&chip->status_change_work);
+	return count;
+}
+static DEVICE_ATTR(CEIMaskTemp, 0664 , show_CEIMaskTemp, store_CEIMaskTemp);
 
 /* All getters HERE */
 
@@ -637,7 +680,7 @@ static int fg_get_jeita_threshold(struct fg_chip *chip,
 static int fg_get_battery_temp(struct fg_chip *chip, int *val)
 {
 	int rc = 0, temp;
-	u8 buf[2];
+	u8 buf[2], fg_wval;
 
 	rc = fg_read(chip, BATT_INFO_BATT_TEMP_LSB(chip), buf, 2);
 	if (rc < 0) {
@@ -652,7 +695,24 @@ static int fg_get_battery_temp(struct fg_chip *chip, int *val)
 
 	/* Value is in Kelvin; Convert it to deciDegC */
 	temp = (temp - 273) * 10;
-	*val = temp;
+
+	if (CEI_Mask_Temp != 999) {
+		*val = CEI_Mask_Temp;
+		fg_wval = 0x01;
+		rc = fg_write(chip, BATT_INFO_JEITA_CTLS(chip), &fg_wval, 1);
+		if (rc < 0) {
+			pr_err("Error in writing jeita_cold, rc=%d\n", rc);
+			return rc;
+		}
+	} else {
+		*val = temp;
+		fg_wval = 0x00;
+		rc = fg_write(chip, BATT_INFO_JEITA_CTLS(chip), &fg_wval, 1);
+		if (rc < 0) {
+			pr_err("Error in writing jeita_cold, rc=%d\n", rc);
+			return rc;
+		}
+	}
 	return 0;
 }
 
@@ -983,13 +1043,22 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 	struct device_node *node = chip->dev->of_node;
 	struct device_node *batt_node, *profile_node;
 	const char *data;
-	int rc, len;
+	int rc, len, temp;
 
-	batt_node = of_find_node_by_name(node, "qcom,battery-data");
-	if (!batt_node) {
-		pr_err("Batterydata not available\n");
-		return -ENXIO;
-	}
+	if( strcmp(get_cei_mb_id(), cei_mb_sm12) == 0) {
+		batt_node = of_find_node_by_name(node, "qcom,battery-data-sm12");
+		if (!batt_node) {
+			pr_err("Batterydata sm12 not available\n");
+			return -ENXIO;
+		}
+	} else if (strcmp(get_cei_mb_id(), cei_mb_sm22) == 0) {
+		batt_node = of_find_node_by_name(node, "qcom,battery-data-sm22");
+		if (!batt_node) {
+			pr_err("Batterydata sm22 not available\n");
+			return -ENXIO;
+		}
+	} else
+		pr_err("Got other mb ID\n");
 
 	profile_node = of_batterydata_get_best_profile(batt_node,
 				chip->batt_id_ohms / 1000, NULL);
@@ -997,7 +1066,15 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		return PTR_ERR(profile_node);
 
 	if (!profile_node) {
-		pr_err("couldn't find profile handle\n");
+		// CEI comment, alien battery S
+		pr_err("couldn't find profile handle, set CV to 4.0V and Charge curr to 400mA\n");
+		chip->cei_alien_battery = true;
+		chip->bp.float_volt_uv = 4000000;
+		chip->bp.vbatt_full_mv = 3950;
+		chip->dt.recharge_volt_thr_mv = 3900;
+		chip->dt.recharge_soc_thr = 50;
+		chip->bp.fastchg_curr_ma = 400;
+		// CEI comment, alien battery S
 		return -ENODATA;
 	}
 
@@ -1007,7 +1084,16 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		pr_err("battery type unavailable, rc:%d\n", rc);
 		return rc;
 	}
-
+	// CEI comment, battery health feature S
+	if (strcmp(chip->bp.batt_type_str, "1309-2675") == 0) {
+		chip->batt_num = 0;
+	} else if (strcmp(chip->bp.batt_type_str, "1309-2682") == 0) {
+		chip->batt_num = 1;
+	} else if (strcmp(chip->bp.batt_type_str, "1308-3580") == 0) {
+		chip->batt_num = 2;
+	}
+	pr_info("%s() batt_num %d, batt_type_str %s\n", __func__, chip->batt_num, chip->bp.batt_type_str);
+	// CEI comment, battery health feature E
 	rc = of_property_read_u32(profile_node, "qcom,max-voltage-uv",
 			&chip->bp.float_volt_uv);
 	if (rc < 0) {
@@ -1028,6 +1114,50 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		pr_err("battery cc_cv threshold unavailable, rc:%d\n", rc);
 		chip->bp.vbatt_full_mv = -EINVAL;
 	}
+
+	chip->bp.jeita_en_fvc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-fvc-en");
+
+	chip->bp.jeita_en_ccc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-ccc-en");
+
+	chip->bp.jeita_en_hot_sl_fvc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-hot-sl-fvc");
+
+	chip->bp.jeita_en_cold_sl_fvc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-cold-sl-fvc");
+
+	chip->bp.jeita_en_hot_sl_ccc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-hot-sl-ccc");
+
+	chip->bp.jeita_en_cold_sl_ccc = of_property_read_bool(profile_node,
+					"qcom,bp-jeita-cold-sl-ccc");
+
+	rc = of_property_read_u32(profile_node, "qcom,bp-jeita-fvc-cfg",
+			&chip->bp.jeita_fvc_config);
+	if (rc < 0) {
+		pr_err("battery jeita fvc config unavailable, rc:%d\n", rc);
+		chip->bp.jeita_fvc_config = -EINVAL;
+	}
+
+	rc = of_property_read_u32(profile_node, "qcom,bp-jeita-ccc-cfg",
+			&chip->bp.jeita_ccc_config);
+	if (rc < 0) {
+		pr_err("battery jeita ccc config unavailable, rc:%d\n", rc);
+		chip->bp.jeita_ccc_config = -EINVAL;
+	}
+
+	rc = of_property_read_u32(profile_node, "qcom,bp-recharge-voltage", &temp);
+	if (rc < 0)
+		chip->dt.recharge_volt_thr_mv = 4100;
+	else
+		chip->dt.recharge_volt_thr_mv = temp;
+
+		rc = of_property_read_u32(profile_node, "qcom,bp-jeita-hyst-temp", &temp);
+	if (rc < 0)
+		chip->dt.jeita_hyst_temp = -EINVAL;
+	else
+		chip->dt.jeita_hyst_temp = temp;
 
 	data = of_get_property(profile_node, "qcom,fg-profile-data", &len);
 	if (!data) {
@@ -1139,14 +1269,16 @@ static int fg_set_esr_timer(struct fg_chip *chip, int cycles_init,
 static void fg_notify_charger(struct fg_chip *chip)
 {
 	union power_supply_propval prop = {0, };
-	int rc;
+	int rc, jeita_cfg;
 
 	if (!chip->batt_psy)
 		return;
-
-	if (!chip->profile_available)
+	// CEI comment, alien battery S
+	if (!chip->profile_available && !chip->cei_alien_battery) {
+		pr_err("%s:no profile available and alien battery is not set", __func__);
 		return;
-
+	}
+	// CEI comment, alien battery E
 	prop.intval = chip->bp.float_volt_uv;
 	rc = power_supply_set_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
@@ -1161,6 +1293,56 @@ static void fg_notify_charger(struct fg_chip *chip)
 			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX, &prop);
 	if (rc < 0) {
 		pr_err("Error in setting constant_charge_current_max property on batt_psy, rc=%d\n",
+			rc);
+		return;
+	}
+
+	jeita_cfg = 0;
+
+	if (chip->bp.jeita_en_fvc)
+		jeita_cfg |= JEITA_EN_FVC_EN_BIT;
+
+	if (chip->bp.jeita_en_ccc)
+		jeita_cfg |= JEITA_EN_HARDLIMIT_BIT;
+
+	if (chip->bp.jeita_en_hot_sl_fvc)
+		jeita_cfg |= JEITA_EN_HOT_SL_FCV_BIT;
+
+	if (chip->bp.jeita_en_cold_sl_fvc)
+		jeita_cfg |= JEITA_EN_COLD_SL_FCV_BIT;
+
+	if (chip->bp.jeita_en_hot_sl_ccc)
+		jeita_cfg |= JEITA_EN_HOT_SL_CCC_BIT;
+
+	if (chip->bp.jeita_en_cold_sl_ccc)
+		jeita_cfg |= JEITA_EN_COLD_SL_CCC_BIT;
+
+	prop.intval = jeita_cfg;
+
+	rc = power_supply_set_property(chip->batt_psy,
+			POWER_SUPPLY_PROP_JEITA_EN_CFG, &prop);
+	if (rc < 0) {
+		pr_err("Error in setting POWER_SUPPLY_PROP_JEITA_EN_CFG property on batt_psy, rc=%d\n",
+			rc);
+		return;
+	}
+
+	prop.intval = chip->bp.jeita_fvc_config * 1000;
+
+	rc = power_supply_set_property(chip->batt_psy,
+			POWER_SUPPLY_PROP_JEITA_FVC_CFG, &prop);
+	if (rc < 0) {
+		pr_err("Error in setting POWER_SUPPLY_PROP_JEITA_FVC_CFG property on batt_psy, rc=%d\n",
+			rc);
+		return;
+	}
+
+	prop.intval = chip->bp.jeita_ccc_config * 1000;
+
+	rc = power_supply_set_property(chip->batt_psy,
+			POWER_SUPPLY_PROP_JEITA_CCC_CFG, &prop);
+	if (rc < 0) {
+		pr_err("Error in setting POWER_SUPPLY_PROP_JEITA_CCC_CFG property on batt_psy, rc=%d\n",
 			rc);
 		return;
 	}
@@ -3085,6 +3267,15 @@ done:
 out:
 	chip->soc_reporting_ready = true;
 	vote(chip->awake_votable, PROFILE_LOAD, false, 0);
+	// CEI comment, alien battery S
+	if (chip->cei_alien_battery) {
+		rc = fg_set_recharge_voltage(chip, chip->dt.recharge_volt_thr_mv);
+		rc = fg_bp_params_config(chip);
+		if (rc < 0)
+			pr_err("Error in setting recharge_voltage, rc=%d\n", rc);
+		fg_notify_charger(chip);
+	}
+	// CEI comment, alien battery E
 }
 
 static void sram_dump_work(struct work_struct *work)
@@ -3950,6 +4141,14 @@ static int fg_psy_set_property(struct power_supply *psy,
 			return rc;
 		}
 		break;
+	// CEI comment, soft charger v8 S
+	case POWER_SUPPLY_PROP_RECHARGE_VOLTAGE:
+		chip->dt.recharge_volt_thr_mv = pval->intval;
+		rc = fg_adjust_recharge_voltage(chip);
+		if (rc < 0)
+			pr_err("Error in adjusting recharge_voltage, rc=%d\n", rc);
+		break;
+	// CEI comment, soft charger v8 E
 	default:
 		break;
 	}
@@ -3970,6 +4169,7 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_COOL_TEMP:
 	case POWER_SUPPLY_PROP_WARM_TEMP:
 	case POWER_SUPPLY_PROP_HOT_TEMP:
+	case POWER_SUPPLY_PROP_RECHARGE_VOLTAGE: // CEI comment, soft charger v8
 		return 1;
 	default:
 		break;
@@ -4047,6 +4247,7 @@ static enum power_supply_property fg_psy_props[] = {
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE,
 	POWER_SUPPLY_PROP_CC_STEP,
 	POWER_SUPPLY_PROP_CC_STEP_SEL,
+	POWER_SUPPLY_PROP_RECHARGE_VOLTAGE, // CEI comment, soft charger v8 S
 };
 
 static const struct power_supply_desc fg_psy_desc = {
@@ -4437,6 +4638,7 @@ static irqreturn_t fg_batt_missing_irq_handler(int irq, void *data)
 		chip->profile_available = false;
 		chip->profile_loaded = false;
 		chip->soc_reporting_ready = false;
+		chip->cei_alien_battery = false; // CEI comment, alien battery
 		return IRQ_HANDLED;
 	}
 
@@ -4837,9 +5039,9 @@ static int fg_parse_ki_coefficients(struct fg_chip *chip)
 #define DEFAULT_DELTA_SOC_THR		1
 #define DEFAULT_RECHARGE_SOC_THR	95
 #define DEFAULT_BATT_TEMP_COLD		0
-#define DEFAULT_BATT_TEMP_COOL		5
+#define DEFAULT_BATT_TEMP_COOL		10
 #define DEFAULT_BATT_TEMP_WARM		45
-#define DEFAULT_BATT_TEMP_HOT		50
+#define DEFAULT_BATT_TEMP_HOT		60
 #define DEFAULT_CL_START_SOC		15
 #define DEFAULT_CL_MIN_TEMP_DECIDEGC	150
 #define DEFAULT_CL_MAX_TEMP_DECIDEGC	450
@@ -5263,6 +5465,7 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	struct fg_chip *chip;
 	struct power_supply_config fg_psy_cfg;
 	int rc, msoc, volt_uv, batt_temp;
+	int ret_device_file = 0;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -5435,6 +5638,7 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	device_init_wakeup(chip->dev, true);
 	schedule_delayed_work(&chip->profile_load_work, 0);
 
+	ret_device_file = device_create_file(chip->dev, &dev_attr_CEIMaskTemp);
 	pr_debug("FG GEN3 driver probed successfully\n");
 	return 0;
 exit:
