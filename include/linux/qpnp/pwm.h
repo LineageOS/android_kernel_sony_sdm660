@@ -136,8 +136,6 @@ struct lut_params {
 	int flags;
 };
 
-extern bool get_cei_pwm_mode(void);
-
 #if IS_ENABLED(CONFIG_PWM_QPNP)
 int pwm_config_period(struct pwm_device *pwm,
 			     struct pwm_period_config *pwm_p);
