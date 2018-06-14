@@ -72,6 +72,7 @@ enum print_reason {
 #define USBIN_I_VOTER			"USBIN_I_VOTER"
 #define BATT_SWELLING_VOTER		"BATT_SWELLING_VOTER" // CEI comment, FP225896 battery swelling
 #define WEAK_CHARGER_VOTER		"WEAK_CHARGER_VOTER"
+#define OV_VOTER			"OV_VOTER"
 #define LIMIT_ICL_VOTER			"LIMIT_ICL_VOTER" // CEI comment, to solve uch10 issue
 #define QNS_VOTER			"QNS_VOTER" // TS comment, RID001485 Qnovo adaptive charging
 
@@ -92,6 +93,7 @@ enum {
 	TYPEC_CC2_REMOVAL_WA_BIT	= BIT(2),
 	QC_AUTH_INTERRUPT_WA_BIT	= BIT(3),
 	OTG_WA				= BIT(4),
+	OV_IRQ_WA_BIT			= BIT(5),
 };
 
 enum smb_irq_index {
