@@ -44,6 +44,7 @@
 #include "sdhci-msm.h"
 #include "sdhci-msm-ice.h"
 #include "cmdq_hci.h"
+#include <linux/cei_hw_id.h>
 
 #define QOS_REMOVE_DELAY_MS	10
 #define CORE_POWER		0x0
@@ -1838,6 +1839,7 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	u32 *ice_clk_table = NULL;
 	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
 	const char *lower_bus_speed = NULL;
+	char *mb_id = get_cei_mb_id();
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1846,6 +1848,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	}
 
 	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
+	if (!memcmp(mb_id, "SM22", 4))
+		flags = 0x0;
+
 	if (gpio_is_valid(pdata->status_gpio) && !(flags & OF_GPIO_ACTIVE_LOW))
 		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
 
