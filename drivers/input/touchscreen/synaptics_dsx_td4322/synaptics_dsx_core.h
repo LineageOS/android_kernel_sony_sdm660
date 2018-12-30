@@ -128,6 +128,7 @@
 #define TP_SOURCE_TRULY		0x00
 #define TP_SOURCE_CSOT		0x01
 #define TP_SOURCE_INX		0x02
+#define TP_SOURCE_TM		0x03
 #define TP_SOURCE_UNKNOW	0xFF
 
 extern unsigned int get_config_id(void);
