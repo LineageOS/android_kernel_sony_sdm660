@@ -411,6 +411,7 @@ module_param_named(
 
 char cei_mb_sm12[] = "SM12";
 char cei_mb_sm22[] = "SM22";
+char cei_mb_sm42[] = "SM42";
 
 static int fg_restart;
 static bool fg_sram_dump;
@@ -1057,8 +1058,16 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 			pr_err("Batterydata sm22 not available\n");
 			return -ENXIO;
 		}
+	} else if (strcmp(get_cei_mb_id(), cei_mb_sm42) == 0) {
+		batt_node = of_find_node_by_name(node, "qcom,battery-data-sm42");
+		if (!batt_node) {
+			pr_err("Batterydata sm42 not available\n");
+			return -ENXIO;
+		}
 	} else
 		pr_err("Got other mb ID\n");
+		return -ENXIO;
+	}
 
 	profile_node = of_batterydata_get_best_profile(batt_node,
 				chip->batt_id_ohms / 1000, NULL);
