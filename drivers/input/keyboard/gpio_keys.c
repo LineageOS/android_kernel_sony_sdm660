@@ -667,9 +667,16 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 
 	switch (index) {
 		case PDP:
-			if (of_device_is_compatible(node, "gpio-keys-dp") || of_device_is_compatible(node, "gpio-keys-dp-sm12")) {
-				printk("PDP phase: compatible name is not gpio-keys-dp or gpio-keys-dp-sm12");
-				return ERR_PTR(-ENODEV);
+			if (!strcmp(mainboard, "SM42")) {
+				if (of_device_is_compatible(node, "gpio-keys-dp-sm12") || of_device_is_compatible(node, "gpio-keys")) {
+					printk("[SM42][PDP]: compatible name is not gpio-keys-dp-sm12 or gpio-keys");
+					return ERR_PTR(-ENODEV);
+				}
+			} else {
+				if (of_device_is_compatible(node, "gpio-keys-dp") || of_device_is_compatible(node, "gpio-keys-dp-sm12")) {
+					printk("PDP phase: compatible name is not gpio-keys-dp or gpio-keys-dp-sm12");
+					return ERR_PTR(-ENODEV);
+				}
 			}
 			break;
 		case DP:
