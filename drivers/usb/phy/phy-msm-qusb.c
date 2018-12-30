@@ -122,6 +122,7 @@ MODULE_PARM_DESC(tune5, "QUSB PHY TUNE5");
 
 char cei_mainb_sm12[] = "SM12";
 char cei_mainb_sm22[] = "SM22";
+char cei_mainb_sm42[] = "SM42";
 
 struct qusb_phy {
 	struct usb_phy		phy;
@@ -1120,6 +1121,27 @@ static int qusb_phy_probe(struct platform_device *pdev)
 				dev_err(dev, "error allocating memory for phy_init_seq\n");
 			}
 		}
+	} else if (strcmp(get_cei_mb_id(), cei_mainb_sm42) == 0) {
+		 of_get_property(dev->of_node, "qcom,qusb-phy-init-seq-sm42", &size);
+		 if (size) {
+			  qphy->qusb_phy_init_seq = devm_kzalloc(dev,
+									size, GFP_KERNEL);
+			  if (qphy->qusb_phy_init_seq) {
+					qphy->init_seq_len =
+						 (size / sizeof(*qphy->qusb_phy_init_seq));
+					if (qphy->init_seq_len % 2) {
+						 dev_err(dev, "invalid init_seq_len\n");
+						 return -EINVAL;
+					}
+
+					of_property_read_u32_array(dev->of_node,
+						 "qcom,qusb-phy-init-seq-sm42",
+						 qphy->qusb_phy_init_seq,
+						 qphy->init_seq_len);
+			  } else {
+					dev_err(dev, "error allocating memory for phy_init_seq\n");
+			  }
+		 }
 	} else {
 		/*load default eye setting*/
 		of_get_property(dev->of_node, "qcom,qusb-phy-init-seq", &size);
