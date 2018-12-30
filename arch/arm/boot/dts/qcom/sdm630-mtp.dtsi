@@ -23,6 +23,11 @@
 		qcom,batt-id-range-pct = <15>;
 		#include "sm22-batterydata-3450mah.dtsi"
 	};
+
+	mtp_batterydata_sm42: qcom,battery-data-sm42 {
+		qcom,batt-id-range-pct = <15>;
+		#include "sm42-batterydata-3450mah.dtsi"
+	};
 };
 
 &uartblsp1dm1 {
@@ -134,6 +139,7 @@
 &pm660_fg {
 	qcom,battery-data-sm12 = <&mtp_batterydata_sm12>;
 	qcom,battery-data-sm22 = <&mtp_batterydata_sm22>;
+	qcom,battery-data-sm42 = <&mtp_batterydata_sm42>;
 	qcom,fg-jeita-thresholds = <5 10 45 55>;
 	qcom,battery-thermal-coefficients = [c7 50 ff];
 };
@@ -196,7 +202,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_td4322_truly_fhd_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_td4328_tianma_fhdplus_cmd>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
@@ -232,6 +238,13 @@
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_csot>;
+};
+
+&dsi_td4328_tianma_fhdplus_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_tianma>;
 };
 
 &i2c_1 {

@@ -1553,6 +1553,19 @@
 			};
 		};
 
+		cam_sensor_cameraid: cam_sensor_cameraid {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio49";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
 		cam_sensor_mclk3_active: cam_sensor_mclk3_active {
 			/* MCLK3 */
 			mux {
