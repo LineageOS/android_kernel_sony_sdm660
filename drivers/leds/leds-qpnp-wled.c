@@ -27,6 +27,7 @@
 #include <linux/leds-qpnp-wled.h>
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/gpio.h>
+#include <linux/cei_hw_id.h>
 
 /* base addresses */
 #define QPNP_WLED_CTRL_BASE		"qpnp-wled-ctrl-base"
@@ -240,7 +241,6 @@
 #define QPNP_WLED_AVDD_MV_TO_REG(val) \
 		((val - QPNP_WLED_AVDD_MIN_MV) / QPNP_WLED_AVDD_STEP_MV)
 
-#define HWID_GPIO                         66      // GPIO number for HW ID
 #define DISP_SEL_GPIO                     56      // GPIO number for LCD_SELECT
 
 /* output feedback mode */
@@ -2287,7 +2287,7 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 	struct property *prop;
 	const char *temp_str;
 	u32 temp_val;
-	int rc, i, size, gpio_val;
+	int rc, i, size, gpio_val = -1;
 	u8 *strings;
 
 	wled->cdev.name = "wled";
@@ -2604,29 +2604,27 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 		return rc;
 	}
 
-	gpio_val = read_gpio_value(HWID_GPIO);
-	if (gpio_val == 0) {
-		dev_info(&pdev->dev, "SM12!\n");
-
+	if (strcmp(get_cei_mb_id(), "SM12") == 0) {
 		gpio_val = read_gpio_value(DISP_SEL_GPIO);
 		if (gpio_val == 1) {
 			wled->fs_curr_ua = QPNP_WLED_FS_CURR_35MA;
-			dev_info(&pdev->dev, "truly!, set fs-curr-ua to %d\n", wled->fs_curr_ua);
+			dev_info(&pdev->dev, "truly LCM, set fs-curr-ua to %d\n", wled->fs_curr_ua);
 		} else if (gpio_val == 0) {
 			wled->fs_curr_ua = QPNP_WLED_FS_CURR_40MA;
-			dev_info(&pdev->dev, "csot!, set fs-curr-ua to %d\n", wled->fs_curr_ua);
+			dev_info(&pdev->dev, "csot LCM, set fs-curr-ua to %d\n", wled->fs_curr_ua);
 		} else {
 			dev_warn(&pdev->dev, "Read DISP_SEL_GPIO(%d) failed, so don't change fs-curr-ua\n",
 								DISP_SEL_GPIO);
 		}
-	} else if (gpio_val == 1) {
-		dev_info(&pdev->dev, "SM22!\n");
+	} else if (strcmp(get_cei_mb_id(), "SM22") == 0 ||
+		strcmp(get_cei_mb_id(), "SM42") == 0) {
 		wled->fs_curr_ua = QPNP_WLED_FS_CURR_40MA;
-		dev_info(&pdev->dev, "innolux!, set fs-curr-ua to %d\n", wled->fs_curr_ua);
+		dev_info(&pdev->dev, "SM22 innolux or SM42 tianma LCM, set fs-curr-ua to %d\n", wled->fs_curr_ua);
 	} else {
-		dev_warn(&pdev->dev, "Read HWID_GPIO(%d) failed, so don't change fs-curr-ua\n",
-								HWID_GPIO);
+		dev_warn(&pdev->dev, "Invalid main board id, so don't change fs-curr-ua\n");
 	}
+
+	dev_info(&pdev->dev, "Mainboard id=%s, disp_sel=%d, fs-curr-ua=%d\n", get_cei_mb_id(), gpio_val, wled->fs_curr_ua);
 
 	wled->cons_sync_write_delay_us = 0;
 	rc = of_property_read_u32(pdev->dev.of_node,
