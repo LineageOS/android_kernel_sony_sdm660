@@ -2138,16 +2138,25 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 	unsigned long flags;
 	uint temp = 0;
 	char *phase;
+	char *mainboard;
 
 	phase = get_cei_phase_id();
+	mainboard = get_cei_mb_id();
 	index = get_phase_name_index(phase);
 
 	switch (index)
 	{
 		case PDP:
-			if (of_device_is_compatible(pdev->dev.of_node, "qcom,qpnp-power-on-dp")) {
-				printk("At PDP phase, do not use [qcom,qpnp-power-on-dp] deviceinfo");
-				return -EINVAL;
+			if (!strcmp(mainboard, "SM42")) {
+				if (of_device_is_compatible(pdev->dev.of_node, "qcom,qpnp-power-on")) {
+					printk("At SM42 PDP phase, do not use [qcom,qpnp-power-on] deviceinfo");
+					return -EINVAL;
+				}
+			} else {
+				if (of_device_is_compatible(pdev->dev.of_node, "qcom,qpnp-power-on-dp")) {
+					printk("At PDP phase, do not use [qcom,qpnp-power-on-dp] deviceinfo");
+					return -EINVAL;
+				}
 			}
 			break;
 		case DP:
