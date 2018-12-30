@@ -122,6 +122,7 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 		bool rebuild);
+static int cei_get_irq_depth(struct synaptics_rmi4_data *rmi4_data);
 
 #ifdef CONFIG_FB
 static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
@@ -199,6 +200,8 @@ static ssize_t synaptics_rmi4_tpsource_show(struct device *dev,
 static ssize_t synaptics_rmi4_product_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 static ssize_t synaptics_fw_is_update_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+static ssize_t cei_tp_bl_version_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 struct synaptics_rmi4_f01_device_status {
@@ -749,6 +752,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(fwisupdate, S_IRUGO,
 			synaptics_fw_is_update_show,
 			NULL),
+	__ATTR(tpblver, S_IRUGO,
+			cei_tp_bl_version_show,
+			synaptics_rmi4_store_error),
 };
 
 static struct kobj_attribute virtual_key_map_attr = {
@@ -766,6 +772,40 @@ static ssize_t synaptics_fw_is_update_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%s\n", fw_is_update ? "true" : "false");
 }
 
+/*************************************************************************
+*Function : cei_tp_bl_version_show
+*Description:Read Bootloader Version by using I2C command.
+*Note:The Register number is different in each synaptics ICs.
+***************************************************************************/
+extern unsigned char g_f34_fd_query_base_addr;
+static ssize_t cei_tp_bl_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	int retval;
+
+	unsigned char data[4];
+	unsigned char bl_major,bl_minor;
+
+	/*Read Address*/
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+				g_f34_fd_query_base_addr,
+				&data[0],
+				4);
+	if(retval < 0){
+		return retval;
+	}
+
+	bl_major = data[3] & 0x0F;
+	bl_minor = data[2] & 0x0F;
+
+	TP_LOGI("address 0x%X = 0x%X, 0x%X, 0x%X, 0x%X\n",
+				g_f34_fd_query_base_addr,data[0],data[1],data[2],data[3]);
+
+	return snprintf(buf, PAGE_SIZE,"%d.%d\n",bl_major,bl_minor);
+
+}
+
 static ssize_t synaptics_rmi4_f01_reset_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -780,7 +820,15 @@ static ssize_t synaptics_rmi4_f01_reset_show(struct device *dev,
 
 	return 0;
 }
-
+static int cei_get_irq_depth(struct synaptics_rmi4_data *rmi4_data)
+{
+	struct irq_desc *desc = irq_to_desc(rmi4_data->irq);
+	if (!desc){
+		TP_LOGI(" irq depth is null \n");
+		return 0;
+	}
+	return desc ->depth;
+}
 static ssize_t synaptics_rmi4_f01_productinfo_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3825,6 +3873,22 @@ static void synaptics_rmi4_rebuild_work(struct work_struct *work)
 		}
 	}
 
+	/* CEI add sysfs link */
+	if (rmi4_data->touchscreen_link != NULL) {
+
+		TP_LOGI("sysfs remove link\n");
+		sysfs_remove_link(rmi4_data->touchscreen_link, "link_input_dev");
+
+		TP_LOGI("sysfs create link\n");
+		retval = sysfs_create_link(rmi4_data->touchscreen_link,
+				&rmi4_data->input_dev->dev.kobj,
+				"link_input_dev");
+
+		if (retval < 0) {
+			TP_LOGE("Failed to create sysfs link for input_dev\n");
+		}
+	}
+
 	if (!list_empty(&exp_data.list)) {
 		list_for_each_entry(exp_fhandler, &exp_data.list, link)
 			if (exp_fhandler->exp_fn->init != NULL)
@@ -3840,6 +3904,9 @@ exit:
 	mutex_unlock(&exp_data.mutex);
 
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
+
+	if (rmi4_data->stay_awake)
+		rmi4_data->stay_awake = false;
 
 	return;
 }
@@ -3891,6 +3958,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 		bool rebuild)
 {
 	int retval;
+	int do_rebuild_flag = 0;
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 
 	mutex_lock(&(rmi4_data->rmi4_reset_mutex));
@@ -3929,10 +3997,13 @@ exit:
 
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
 
-	if (rebuild && synaptics_rmi4_do_rebuild(rmi4_data)) {
+	do_rebuild_flag = synaptics_rmi4_do_rebuild(rmi4_data);
+	if (rebuild && do_rebuild_flag) {
 		queue_delayed_work(rmi4_data->rb_workqueue,
 				&rmi4_data->rb_work,
 				msecs_to_jiffies(REBUILD_WORK_DELAY_MS));
+	} else if (rebuild && !do_rebuild_flag) {
+		rmi4_data->stay_awake = false;
 	}
 
 	return retval;
@@ -4139,6 +4210,9 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	} else if (strncmp(project_id, "BY2", 3) == 0) {
 		rmi4_data->project_id = 0x02;
 		rmi4_data->tp_source = TP_SOURCE_INX;
+	} else if (strncmp(project_id, "BY4", 3) == 0) {
+		rmi4_data->project_id = 0x03;
+		rmi4_data->tp_source = TP_SOURCE_TM;
 	} else {
 		TP_LOGW("unknown project id %s, set project_id = 0x00\n", project_id);
 		rmi4_data->project_id = 0x00;
@@ -4152,7 +4226,8 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		rmi4_data->tp_source,
 		rmi4_data->tp_source == TP_SOURCE_TRULY ? "Truly" :
 		rmi4_data->tp_source == TP_SOURCE_CSOT ? "CSOT" :
-		rmi4_data->tp_source == TP_SOURCE_INX ? "INX" : "UNKNOW");
+		rmi4_data->tp_source == TP_SOURCE_INX ? "INX" :
+		rmi4_data->tp_source == TP_SOURCE_TM ? "TM" :"UNKNOW");
 
 	rmi4_data->pdev = pdev;
 	rmi4_data->current_page = MASK_8BIT;
@@ -4652,13 +4727,19 @@ exit:
 
 static int synaptics_rmi4_suspend(struct device *dev)
 {
+	int loop_count = 0;
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
 	TP_LOGI("synaptics suspend +++\n");
 
-	if (rmi4_data->stay_awake)
+	if (rmi4_data->stay_awake) {
+		do {
+			msleep(500);
+		} while (rmi4_data->stay_awake && loop_count++ < 20);
+		TP_LOGI("suspend sleep end,  loop_count = %d\n", loop_count);
 		return 0;
+	}
 
 	if (rmi4_data->enable_wakeup_gesture) {
 		synaptics_rmi4_wakeup_gesture(rmi4_data, true);
@@ -4669,7 +4750,10 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	if (!rmi4_data->suspend) {
 		synaptics_rmi4_irq_enable(rmi4_data, false, false);
 		synaptics_rmi4_sleep_enable(rmi4_data, true);
-		synaptics_rmi4_free_fingers(rmi4_data);
+		/* CEI patch for issue [JIMODM67-14705]
+		 * To avoid the symptom in JIMODM67-14705, we move the following method to resume.
+		 * synaptics_rmi4_free_fingers(rmi4_data);
+		 */
 	}
 
 exit:
@@ -4709,6 +4793,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	rmi4_data->current_page = MASK_8BIT;
 
+	/* CEI patch for issue [JIMODM67-14705]
+	 * To avoid the symptom in JIMODM67-14705, we move the following method to resume.
+	 */
+	synaptics_rmi4_free_fingers(rmi4_data);
 	synaptics_rmi4_sleep_enable(rmi4_data, false);
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
 
@@ -4728,7 +4816,7 @@ exit:
 	mutex_unlock(&exp_data.mutex);
 
 	rmi4_data->suspend = false;
-
+	TP_LOGI("irq depth : %d \n",cei_get_irq_depth(rmi4_data));
 	TP_LOGI("synaptics resume ---\n");
 
 	return 0;
