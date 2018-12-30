@@ -65,7 +65,13 @@
 //#include "firmware/PR2526806-td4322-i2c-innolux6p_sony_SM22_02170001.h"
 //#include "firmware/PR2610092-td4322-i2c-innolux6p_sony_02170101.h"
 #include "firmware/PR2610092-td4322-i2c-innolux6p_sony_profile-02170102.h"
-
+//tm fw
+//#include "firmware/PR2708147_SonySM42_Tianma07_CTPFW_TD4328-03170001.h"
+//#include "firmware/PR2734534-td4328-i2c-tianma-sony-03170100.h"
+//#include "firmware/PR2743968-td4328-i2c-tianma-sony-03170200.h"
+//#include "firmware/PR2743968-td4328-i2c-tianma-sony-03170201.h"
+//#include "firmware/PR2743968-td4328-i2c-tianma-sony-03170202.h"
+#include "firmware/PR2743968-td4328-i2c-tianma-sony-03170203.h"
 #ifdef CONFIG_FB
 #define WAIT_FOR_FB_READY
 #define FB_READY_WAIT_MS 100
@@ -2525,6 +2531,8 @@ exit:
 	return flash_area;
 }
 
+unsigned char g_f34_fd_query_base_addr;
+
 static int fwu_scan_pdt(void)
 {
 	int retval;
@@ -2573,6 +2581,7 @@ static int fwu_scan_pdt(void)
 						rmi_fd.ctrl_base_addr;
 				fwu->f34_fd.data_base_addr =
 						rmi_fd.data_base_addr;
+				g_f34_fd_query_base_addr = fwu->f34_fd.query_base_addr;
 
 				switch (rmi_fd.fn_version) {
 				case F34_V0:
@@ -3741,7 +3750,9 @@ exit:
 
 	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
 
-	rmi4_data->stay_awake = false;
+	if (fwu->config_area != UI_CONFIG_AREA) {
+		rmi4_data->stay_awake = false;
+	}
 
 	return retval;
 }
@@ -3941,7 +3952,8 @@ exit:
 
 	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
 
-	rmi4_data->stay_awake = false;
+	if (!do_rebuild)
+		rmi4_data->stay_awake = false;
 
 	return retval;
 }
@@ -4244,7 +4256,8 @@ exit:
 
 	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
 
-	rmi4_data->stay_awake = false;
+	if (retval != 0)
+		rmi4_data->stay_awake = false;
 
 	return retval;
 }
@@ -4315,22 +4328,26 @@ static void fwu_startup_fw_update_work(struct work_struct *work)
 		fwu->rmi4_data->config_id,
 		(fwu->rmi4_data->config_id >> 24));
 
-	if (fwu->rmi4_data->config_id == 0x60008) { // SM21 module config id = 0x60008
-		TP_LOGW("Using SM21 touch module, no need to upgrade\n");
+	if (fwu->rmi4_data->config_id == 0x60008 ||fwu->rmi4_data->config_id == 0x10000000 ) {
+		TP_LOGW("Using SM21 & SM42 touch module, no need to upgrade\n");
 	} else {
 		if (rmi4_data->tp_source == TP_SOURCE_TRULY) {
-			/**/
+			/* SM12 Truly */
 			synaptics_fw_updater(FirmwareImage_TRULY);
 
 		} else if (rmi4_data->tp_source == TP_SOURCE_CSOT) {
-			/**/
+			/* SM12 CSOT */
 			synaptics_fw_updater(FirmwareImage_CSOT);
 
 		} else if (rmi4_data->tp_source == TP_SOURCE_INX) {
-			/**/
+			/* SM22 INX */
 			synaptics_fw_updater(FirmwareImage_INX);
 
-		} else
+		} else if (rmi4_data->tp_source == TP_SOURCE_TM) {
+			/* SM42 TM */
+			synaptics_fw_updater(FirmwareImage_TM);
+
+		}else
 			TP_LOGE("unknow TP source (0x%02X)\n", rmi4_data->tp_source);
 	}
 
@@ -4769,10 +4786,15 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 #ifdef DO_STARTUP_FW_UPDATE
-	fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
-	INIT_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
-	queue_work(fwu->fwu_workqueue,
-			&fwu->fwu_work);
+	TP_LOGI("androidboot.mode=%s\n", get_cei_android_boot_mode());
+	if (strcmp("charger", get_cei_android_boot_mode()) == 0) {
+		TP_LOGI("Skip startup firmware update in charger mode\n");
+	} else {
+		fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
+		INIT_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
+		queue_work(fwu->fwu_workqueue,
+				&fwu->fwu_work);
+	}
 #endif
 
 #ifdef F51_DISCRETE_FORCE
