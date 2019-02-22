@@ -393,7 +393,6 @@ struct poll_table_struct *wait)
 {
 	unsigned int mask = 0;
 
-	DEBUG_PRINT("%s\n", __func__);
 	fps_ints.int_count = 0;
 	poll_wait(file, &interrupt_waitq, wait);
 	if (fps_ints.finger_on) {
