@@ -1446,8 +1446,10 @@ int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 	if (!chg->usb_icl_votable) {
 		chg->usb_icl_votable = find_votable("USB_ICL");
 
-		if (!chg->usb_icl_votable)
-			return -EINVAL;
+		if (!chg->usb_icl_votable) {
+			rc = -EINVAL;
+			goto unlock;
+		}
 	}
 	vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, true, 0);
 
@@ -2030,18 +2032,6 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 	return rc;
 }
 
-static int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
-{
-	int rc;
-
-	rc = smblib_masked_write(chg, CMD_HVDCP_2_REG, val, val);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't write to CMD_HVDCP_2_REG rc=%d\n",
-				rc);
-
-	return rc;
-}
-
 int smblib_dp_dm(struct smb_charger *chg, int val)
 {
 	int target_icl_ua, rc = 0;
@@ -2092,21 +2082,6 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 						target_icl_ua - 100000);
 		smblib_dbg(chg, PR_PARALLEL, "ICL DOWN ICL=%d reduction=%d\n",
 				target_icl_ua, chg->usb_icl_delta_ua);
-		break;
-	case POWER_SUPPLY_DP_DM_FORCE_5V:
-		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 5V\n");
-		break;
-	case POWER_SUPPLY_DP_DM_FORCE_9V:
-		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 9V\n");
-		break;
-	case POWER_SUPPLY_DP_DM_FORCE_12V:
-		rc = smblib_force_vbus_voltage(chg, FORCE_12V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 12V\n");
 		break;
 	case POWER_SUPPLY_DP_DM_ICL_UP:
 	default:
@@ -2239,7 +2214,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 	}
 
 	// CEI comment, Setting the usb_online to 0 when connected suspend pc S
-	sdp_current = get_client_vote(chg->usb_icl_votable, USB_PSY_VOTER);
+	sdp_current = get_client_vote_locked(chg->usb_icl_votable, USB_PSY_VOTER);
 	if (sdp_current >= 0 && sdp_current <= SDP_CURRENT_SUSPENDED) {
 		val->intval = false;
 		return rc;
@@ -2265,7 +2240,6 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 {
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
-	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 	case POWER_SUPPLY_TYPE_USB_PD:
 		if (chg->smb_version == PM660_SUBTYPE)
 			val->intval = MICRO_9V;
@@ -2283,6 +2257,12 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 int smblib_get_prop_usb_voltage_now(struct smb_charger *chg,
 				    union power_supply_propval *val)
 {
+	int rc = 0;
+
+	rc = smblib_get_prop_usb_present(chg, val);
+	if (rc < 0 || !val->intval)
+		return rc;
+
 	if (!chg->iio.usbin_v_chan ||
 		PTR_ERR(chg->iio.usbin_v_chan) == -EPROBE_DEFER)
 		chg->iio.usbin_v_chan = iio_channel_get(chg->dev, "usbin_v");
@@ -2604,8 +2584,7 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			 */
 			typec_mode = smblib_get_prop_typec_mode(chg);
 			rp_ua = get_rp_based_dcp_current(chg, typec_mode);
-			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
-								true, rp_ua);
+			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 500000);
 			if (rc < 0)
 				return rc;
 		} else {
@@ -2848,7 +2827,7 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		hvdcp = stat & QC_CHARGER_BIT;
 		vote(chg->apsd_disable_votable, PD_VOTER, false, 0);
 		vote(chg->pd_allowed_votable, PD_VOTER, true, 0);
-		vote(chg->usb_irq_enable_votable, PD_VOTER, false, 0);
+		vote(chg->usb_irq_enable_votable, PD_VOTER, true, 0);
 		vote(chg->hvdcp_disable_votable_indirect, PD_INACTIVE_VOTER,
 								false, 0);
 
@@ -3673,8 +3652,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 		 * if pd is not allowed, then set pd_active = false right here,
 		 * so that it starts the hvdcp engine
 		 */
-		if (!get_effective_result(chg->pd_allowed_votable) &&
-				!chg->micro_usb_mode)
+		if (!get_effective_result(chg->pd_allowed_votable))
 			__smblib_set_prop_pd_active(chg, 0);
 	}
 
