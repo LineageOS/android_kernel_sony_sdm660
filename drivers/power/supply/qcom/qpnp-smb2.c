@@ -858,7 +858,6 @@ static int smb2_init_usb_main_psy(struct smb2 *chip)
  *************************/
 
 static enum power_supply_property smb2_dc_props[] = {
-	POWER_SUPPLY_PROP_INPUT_SUSPEND,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
@@ -874,9 +873,6 @@ static int smb2_dc_get_prop(struct power_supply *psy,
 	int rc = 0;
 
 	switch (psp) {
-	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
-		val->intval = get_effective_result(chg->dc_suspend_votable);
-		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		rc = smblib_get_prop_dc_present(chg, val);
 		break;
@@ -908,10 +904,6 @@ static int smb2_dc_set_prop(struct power_supply *psy,
 	int rc = 0;
 
 	switch (psp) {
-	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
-		rc = vote(chg->dc_suspend_votable, WBC_VOTER,
-				(bool)val->intval, 0);
-		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		rc = smblib_set_prop_dc_current_max(chg, val);
 		break;
@@ -1023,8 +1015,6 @@ static enum power_supply_property smb2_batt_props[] = {
 	// CEI comment, safety timer switch E
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
-	POWER_SUPPLY_PROP_CHARGE_FULL,
-	POWER_SUPPLY_PROP_CYCLE_COUNT,
 };
 
 static int smb2_batt_get_prop(struct power_supply *psy,
@@ -1079,6 +1069,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SW_JEITA_ENABLED:
 		val->intval = chg->sw_jeita_enabled;
 		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		rc = smblib_get_prop_batt_voltage_now(chg, val);
+		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		val->intval = get_client_vote(chg->fv_votable,
 				BATT_PROFILE_VOTER);
@@ -1090,6 +1083,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote_locked(chg->fv_votable,
 				QNOVO_VOTER);
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		rc = smblib_get_prop_batt_current_now(chg, val);
+		break;
 	case POWER_SUPPLY_PROP_CURRENT_QNOVO:
 		val->intval = get_client_vote_locked(chg->fcc_votable,
 				QNOVO_VOTER);
@@ -1097,6 +1093,23 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		val->intval = get_client_vote(chg->fcc_votable,
 					      BATT_PROFILE_VOTER);
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		rc = smblib_get_prop_batt_temp(chg, val);
+		// CEI comment, JEITA extension S
+		if ( strcmp(get_cei_mb_id(), "SM12") == 0)
+			rc = smblib_SM12_JEITA_extension(chg, val);
+		else {
+			// since qns will control ibat, so sm22 also need to set fcc by SW instead of HW cc compensation.
+			if (val->intval < 100 || val->intval > 450) {
+				vote(chg->fcc_votable, JEITA_EXTENSION_VOTER, true, 650000);
+				pr_debug("%s(): JEITA_EXTENSION_VOTER, fcc_votable vote 650mA\n",__func__);
+			} else {
+				vote(chg->fcc_votable, JEITA_EXTENSION_VOTER, false, 0);
+				pr_debug("%s(): JEITA_EXTENSION_VOTER, fcc_votable vote 0mA\n",__func__);
+			}
+		}
+		// CEI comment, JEITA extension E
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -1158,7 +1171,7 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 			pr_err("%s() :bms psy not found\n", __func__);
 			rc = -ENODEV;
 			break;
-			}
+		}
 		rc = power_supply_get_property(chg->bms_psy,
 			POWER_SUPPLY_PROP_BATTERY_TYPE, val);
 		break;
@@ -1168,26 +1181,7 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = chg->TM_disable;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-	case POWER_SUPPLY_PROP_CHARGE_FULL:
-	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
-	case POWER_SUPPLY_PROP_TEMP:
-		rc = smblib_get_prop_from_bms(chg, psp, val);
-		// CEI comment, JEITA extension S
-		if (strcmp(get_cei_mb_id(), "SM12") == 0) {
-			rc = smblib_SM12_JEITA_extension(chg, val);
-		} else {
-			// since qns will control ibat, so sm22 also need to set fcc by SW instead of HW cc compensation.
-			if (val->intval < 100 || val->intval > 450) {
-				vote(chg->fcc_votable, JEITA_EXTENSION_VOTER, true, 650000);
-				pr_debug("%s(): JEITA_EXTENSION_VOTER, fcc_votable vote 650mA\n",__func__);
-			} else {
-				vote(chg->fcc_votable, JEITA_EXTENSION_VOTER, false, 0);
-				pr_debug("%s(): JEITA_EXTENSION_VOTER, fcc_votable vote 0mA\n",__func__);
-			}
-		}
-		// CEI comment, JEITA extension E
+		rc = smblib_get_prop_batt_charge_counter(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE:
 		val->intval = chg->fcc_stepper_mode;
@@ -1340,7 +1334,7 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 			chg->somc_params.smart.enabled = true;
 		}
 		break;
-       case POWER_SUPPLY_PROP_SMART_CHARGING_INTERRUPTION:
+	case POWER_SUPPLY_PROP_SMART_CHARGING_INTERRUPTION:
 		if (chg->somc_params.smart.enabled) {
 			chg->somc_params.smart.suspended = (bool)val->intval;
 			rc = somc_chg_smart_set_suspend(chg);
@@ -1460,7 +1454,7 @@ static int smb2_init_batt_psy(struct smb2 *chip)
  * VBUS REGULATOR REGISTRATION *
  ******************************/
 
-static struct regulator_ops smb2_vbus_reg_ops = {
+struct regulator_ops smb2_vbus_reg_ops = {
 	.enable = smblib_vbus_regulator_enable,
 	.disable = smblib_vbus_regulator_disable,
 	.is_enabled = smblib_vbus_regulator_is_enabled,
@@ -1502,7 +1496,7 @@ static int smb2_init_vbus_regulator(struct smb2 *chip)
  * VCONN REGULATOR REGISTRATION *
  ******************************/
 
-static struct regulator_ops smb2_vconn_reg_ops = {
+struct regulator_ops smb2_vconn_reg_ops = {
 	.enable = smblib_vconn_regulator_enable,
 	.disable = smblib_vconn_regulator_disable,
 	.is_enabled = smblib_vconn_regulator_is_enabled,
@@ -1844,7 +1838,7 @@ enum {
 static int soft_charge_update_battery_type(struct smb_charger *chg)
 {
 	union power_supply_propval pval = {0, };
-        int rc;
+	int rc;
 
 	chg->bms_psy = power_supply_get_by_name("bms");
 
@@ -1859,7 +1853,7 @@ static int soft_charge_update_battery_type(struct smb_charger *chg)
 		pr_err("[SC]%s():  Couldn't get POWER_SUPPLY_PROP_BATTERY_TYPE , rc=%d\n", __func__, rc);
 		return false;
 	}
- 
+
 	if (strcmp(BATT_TYPE_STR_SM12_SEND, pval.strval) == 0) {
 		chg->batt_type = 0;
 		pr_debug("[SC]%s(): battery type %d found\n", __func__, chg->batt_type);
@@ -1897,19 +1891,20 @@ static int cal_for_sm12_send(struct smb_charger *chg, int bat_vol, int bat_temp)
 		}
 	}
 
-
-	if (strcmp(soft_charge31_LV2_time, "\0")) { // LV2 already triggered
+	if (strcmp(soft_charge31_LV2_time, "\0")) {
+		// LV2 already triggered
 		SC31_timeTT = SC31_timeA * 100/SM12_SEND_LV2_timeA_FACTOR +
 			SC31_timeB * 100/SM12_SEND_LV2_timeB_FACTOR +
 				       SC31_timeC * 100/SM12_SEND_LV2_timeC_FACTOR;
 		aging_level = 2;
-
-	} else if (strcmp(soft_charge31_LV1_time, "\0")) { //LV1 already triggered
+	} else if (strcmp(soft_charge31_LV1_time, "\0")) {
+		// LV1 already triggered
 		SC31_timeTT = SC31_timeA * 100/SM12_SEND_LV2_timeA_FACTOR +
 			SC31_timeB * 100/SM12_SEND_LV2_timeB_FACTOR +
 				       SC31_timeC * 100/SM12_SEND_LV2_timeC_FACTOR;
 
-		if (SC31_timeTT > SM12_SEND_LV2_AGING_TIME) { // LV2 is triggering
+		if (SC31_timeTT > SM12_SEND_LV2_AGING_TIME) {
+			// LV2 is triggering
 			getnstimeofday(&ts);
 			rtc_time_to_tm(ts.tv_sec, &tm);
 			retval = snprintf(soft_charge31_LV2_time, sizeof(soft_charge31_LV1_time),
@@ -1921,11 +1916,13 @@ static int cal_for_sm12_send(struct smb_charger *chg, int bat_vol, int bat_temp)
 		} else {
 			aging_level = 1;
 		}
-	} else {// both  LV1 and LV2 don't trigger yet
+	} else {
+		// both  LV1 and LV2 don't trigger yet
 		SC31_timeTT = SC31_timeA * 100 /SM12_SEND_LV1_timeA_FACTOR +
 				SC31_timeB * 100/SM12_SEND_LV1_timeB_FACTOR + SC31_timeC * 100/SM12_SEND_LV1_timeC_FACTOR;
 
-		if (SC31_timeTT > SM12_SEND_LV1_AGING_TIME) { // LV1 is triggering
+		if (SC31_timeTT > SM12_SEND_LV1_AGING_TIME) {
+			// LV1 is triggering
 			aging_level = 1;
 			SC31_timeA = 0;
 			SC31_timeB = 0;
@@ -1990,18 +1987,21 @@ static int cal_for_sm12_tdk(struct smb_charger *chg, int bat_vol, int bat_temp)
 		}
 	}
 
-	if (strcmp(soft_charge31_LV2_time, "\0")) { // LV2 already triggered
+	if (strcmp(soft_charge31_LV2_time, "\0")) {
+		// LV2 already triggered
 		SC31_timeTT = SC31_timeA * 100/SM12_TDK_LV2_timeA_FACTOR +
 			SC31_timeB * 100/SM12_TDK_LV2_timeB_FACTOR +
 				       SC31_timeC * 100/SM12_TDK_LV2_timeC_FACTOR;
 		aging_level = 2;
 
-	} else if (strcmp(soft_charge31_LV1_time, "\0")) { //LV1 already triggered
+	} else if (strcmp(soft_charge31_LV1_time, "\0")) {
+		// LV1 already triggered
 		SC31_timeTT = SC31_timeA * 100/SM12_TDK_LV2_timeA_FACTOR +
 			SC31_timeB * 100/SM12_TDK_LV2_timeB_FACTOR +
 				       SC31_timeC * 100/SM12_TDK_LV2_timeC_FACTOR;
 
-		if (SC31_timeTT > SM12_TDK_LV2_AGING_TIME) { // LV2 is triggering
+		if (SC31_timeTT > SM12_TDK_LV2_AGING_TIME) {
+			// LV2 is triggering
 			getnstimeofday(&ts);
 			rtc_time_to_tm(ts.tv_sec, &tm);
 			retval = snprintf(soft_charge31_LV2_time, sizeof(soft_charge31_LV2_time),
@@ -2018,7 +2018,8 @@ static int cal_for_sm12_tdk(struct smb_charger *chg, int bat_vol, int bat_temp)
 		SC31_timeTT = SC31_timeA * 100 /SM12_TDK_LV1_timeA_FACTOR +
 				SC31_timeB * 100/SM12_TDK_LV1_timeB_FACTOR + SC31_timeC * 100/SM12_TDK_LV1_timeC_FACTOR;
 
-		if (SC31_timeTT > SM12_TDK_LV1_AGING_TIME) { // LV1 is triggering
+		if (SC31_timeTT > SM12_TDK_LV1_AGING_TIME) {
+			// LV1 is triggering
 			aging_level = 1;
 			SC31_timeA = 0;
 			SC31_timeB = 0;
@@ -2136,7 +2137,7 @@ int set_soft_charge31_mode(struct smb_charger *chg, unsigned int determinate_agi
 		pval.intval = SC31_LV1_RECHARGE_VOLTAGE;
 		rc = power_supply_set_property(chg->bms_psy, POWER_SUPPLY_PROP_RECHARGE_VOLTAGE,
 			&pval);
-		 if (rc < 0) {
+		if (rc < 0) {
 			pr_err("[SC]%s():  Couldn't set POWER_SUPPLY_PROP_RECHARGE_VOLTAGE , rc=%d\n",
 				__func__, rc);
 		}
@@ -2170,7 +2171,7 @@ int set_soft_charge31_mode(struct smb_charger *chg, unsigned int determinate_agi
 int set_soft_charge30_mode(struct smb_charger *chg, unsigned int determinate_aging_level)
 {
 	union power_supply_propval pval = {0, };
-        int rc;
+	int rc;
 
 	chg->bms_psy = power_supply_get_by_name("bms");
 
@@ -2242,8 +2243,7 @@ static void soft_charge_work(struct work_struct *work)
 		return;
 	}
 
-	rc = smblib_get_prop_from_bms(chg,
-			POWER_SUPPLY_PROP_VOLTAGE_NOW, &bat_vol);
+	rc = smblib_get_prop_batt_voltage_now(chg, &bat_vol);
 
 	if (rc < 0) {
 		pr_err("[SC]%s(): Couldn't get smblib_get_prop_batt_voltage_now , rc=%d\n", __func__, rc);
@@ -2631,18 +2631,6 @@ static int smb2_init_hw(struct smb2 *chip)
 		return rc;
 	}
 
-	/*
-	 * allow DRP.DFP time to exceed by tPDdebounce time.
-	 */
-	rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
-				TYPEC_DRP_DFP_TIME_CFG_BIT,
-				TYPEC_DRP_DFP_TIME_CFG_BIT);
-	if (rc < 0) {
-		dev_err(chg->dev, "Couldn't configure DRP.DFP time rc=%d\n",
-			rc);
-		return rc;
-	}
-
 	/* configure float charger options */
 	switch (chip->dt.float_option) {
 	case 1:
@@ -2742,30 +2730,30 @@ static int smb2_init_hw(struct smb2 *chip)
 			return rc;
 		}
 	}
-// CEI comment, safety timer switch S
-               rc = smblib_masked_write(chg, SCHG_CHGR_PRE_CHARGE_SAFETY_TIMER_CFG,
-                               PRE_CHARGE_SAFETY_TIMER_CFG_MASK,
-                               chg->chg_ac_pre_c_safety_time);
-               if (rc < 0) {
-                       pr_err("Couldn't write SCHG_CHGR_PRE_CHARGE_SAFETY_TIMER_CFG rc=%d\n", rc);
-               }
+	// CEI comment, safety timer switch S
+	rc = smblib_masked_write(chg, SCHG_CHGR_PRE_CHARGE_SAFETY_TIMER_CFG,
+			PRE_CHARGE_SAFETY_TIMER_CFG_MASK,
+			chg->chg_ac_pre_c_safety_time);
+	if (rc < 0) {
+		pr_err("Couldn't write SCHG_CHGR_PRE_CHARGE_SAFETY_TIMER_CFG rc=%d\n", rc);
+	}
 
-               rc = smblib_masked_write(chg, SCHG_CHGR_FAST_CHARGE_SAFETY_TIMER_CFG,
-                               FAST_CHARGE_SAFETY_TIMER_CFG_MASK,
-                               chg->chg_ac_fast_c_safety_time);
-               if (rc < 0) {
-                       pr_err("Couldn't write SCHG_CHGR_FAST_CHARGE_SAFETY_TIMER_CFG rc=%d\n", rc);
-               }
-// CEI comment, safety timer switch E
+	rc = smblib_masked_write(chg, SCHG_CHGR_FAST_CHARGE_SAFETY_TIMER_CFG,
+			FAST_CHARGE_SAFETY_TIMER_CFG_MASK,
+			chg->chg_ac_fast_c_safety_time);
+	if (rc < 0) {
+		pr_err("Couldn't write SCHG_CHGR_FAST_CHARGE_SAFETY_TIMER_CFG rc=%d\n", rc);
+	}
+	// CEI comment, safety timer switch E
 
-// CEI comment, set 4.5v for USBIN_5V_AICL_THRESHOLD S
-               rc = smblib_masked_write(chg, USBIN_5V_AICL_THRESHOLD_CFG_REG,
-                               USBIN_5V_AICL_THRESHOLD_CFG_MASK,
-                               0x5);
-               if (rc < 0) {
-                       pr_err("Couldn't write USBIN_5V_AICL_THRESHOLD_CFG_REG rc=%d\n", rc);
-		}
-// CEI comment, set 4.5v for USBIN_5V_AICL_THRESHOLD E
+	// CEI comment, set 4.5v for USBIN_5V_AICL_THRESHOLD S
+	rc = smblib_masked_write(chg, USBIN_5V_AICL_THRESHOLD_CFG_REG,
+			USBIN_5V_AICL_THRESHOLD_CFG_MASK,
+			0x5);
+	if (rc < 0) {
+		pr_err("Couldn't write USBIN_5V_AICL_THRESHOLD_CFG_REG rc=%d\n", rc);
+	}
+	// CEI comment, set 4.5v for USBIN_5V_AICL_THRESHOLD E
 
 	return rc;
 }
