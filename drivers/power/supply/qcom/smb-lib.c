@@ -1446,8 +1446,10 @@ int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 	if (!chg->usb_icl_votable) {
 		chg->usb_icl_votable = find_votable("USB_ICL");
 
-		if (!chg->usb_icl_votable)
-			return -EINVAL;
+		if (!chg->usb_icl_votable) {
+			rc = -EINVAL;
+			goto unlock;
+		}
 	}
 	vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, true, 0);
 
@@ -2239,7 +2241,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 	}
 
 	// CEI comment, Setting the usb_online to 0 when connected suspend pc S
-	sdp_current = get_client_vote(chg->usb_icl_votable, USB_PSY_VOTER);
+	sdp_current = get_client_vote_locked(chg->usb_icl_votable, USB_PSY_VOTER);
 	if (sdp_current >= 0 && sdp_current <= SDP_CURRENT_SUSPENDED) {
 		val->intval = false;
 		return rc;
@@ -2604,8 +2606,7 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			 */
 			typec_mode = smblib_get_prop_typec_mode(chg);
 			rp_ua = get_rp_based_dcp_current(chg, typec_mode);
-			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
-								true, rp_ua);
+			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 500000);
 			if (rc < 0)
 				return rc;
 		} else {
