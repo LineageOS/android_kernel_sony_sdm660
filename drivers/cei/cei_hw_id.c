@@ -27,6 +27,7 @@ static char ceiskuname[HARDWARE_INFO_COMMANDLINE_LENGTH];
 static char ceisimslotname[HARDWARE_INFO_COMMANDLINE_LENGTH];
 static char ceimbname[HARDWARE_INFO_COMMANDLINE_LENGTH];
 static char ceifpname[HARDWARE_INFO_COMMANDLINE_LENGTH];
+static char ceiandroidbootmode[HARDWARE_INFO_COMMANDLINE_LENGTH];
 
 static const char *cei_phase_name[] = {
 	"PDP",
@@ -263,6 +264,13 @@ static int __init cei_mb_id_from_cmdline(char *str)
 }
 __setup("cei_mainboard_id=", cei_mb_id_from_cmdline);
 
+static int __init cei_android_boot_mode_from_cmdline(char *str)
+{
+	strlcpy(ceiandroidbootmode, str, sizeof(ceiandroidbootmode));
+	return 1;
+}
+__setup("androidboot.mode=", cei_android_boot_mode_from_cmdline);
+
 char *get_cei_phase_id(void)
 {
 	return ceiphasename;
@@ -298,6 +306,12 @@ char *get_cei_fp_id(void)
 	return ceifpname;
 }
 EXPORT_SYMBOL(get_cei_fp_id);
+
+char *get_cei_android_boot_mode(void)
+{
+	return ceiandroidbootmode;
+}
+EXPORT_SYMBOL(get_cei_android_boot_mode);
 
 int get_phase_name_index(char *name)
 {

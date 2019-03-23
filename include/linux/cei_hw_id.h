@@ -53,6 +53,8 @@ extern char *get_cei_simslot_id(void);
 extern char *get_cei_mb_id(void);
 extern char *get_cei_fp_id(void);
 extern int get_phase_name_index(char *name);
+extern char *get_cei_android_boot_mode(void);
 extern int get_simslot_name_index(char *name);
+extern char *get_cei_android_boot_mode(void);
 
 #endif /* __CCI_HW_ID_H */
