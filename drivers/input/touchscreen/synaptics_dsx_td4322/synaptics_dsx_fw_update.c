@@ -83,6 +83,7 @@
 #define MAX_WRITE_SIZE 4096
 */
 
+#define ALLOW_DOWNGRADE 1 // 1 or 0
 #define FORCE_UPDATE false
 #define DO_LOCKDOWN false
 
@@ -2487,8 +2488,13 @@ static enum flash_area fwu_go_nogo(void)
 		flash_area = UI_FIRMWARE;
 		goto exit;
 	} else if (image_fw_id < device_fw_id) {
-		TP_LOGI("Image firmware ID older than device firmware ID\n");
+#if ALLOW_DOWNGRADE
+		TP_LOGI("Update reason: Image firmware ID older than device firmware ID, forcing downgrade!\n");
+		flash_area = UI_FIRMWARE;
+#else
+		TP_LOGI("Image firmware ID older than device firmware ID, not downgrading.\n");
 		flash_area = NONE;
+#endif
 		goto exit;
 	}
 
@@ -2511,7 +2517,13 @@ static enum flash_area fwu_go_nogo(void)
 			flash_area = UI_CONFIG;
 			goto exit;
 		} else if (fwu->img.ui_config.data[ii] < fwu->config_id[ii]) {
+#if ALLOW_DOWNGRADE
+			TP_LOGI("Update reason: Image config id older, forcing downgrade!\n");
+			flash_area = UI_CONFIG;
+#else
+			TP_LOGI("Image config id older, not downgrading.\n");
 			flash_area = NONE;
+#endif
 			goto exit;
 		}
 	}
