@@ -4192,36 +4192,24 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	mdelay(1);
 	rmi4_data->lcd_id = gpio_get_value(56);
 
-	/* Get project id */
-	project_id = get_cei_project_id();
-
 	/* tp_source default set to 0xFF (unknow) */
 	rmi4_data->tp_source = TP_SOURCE_UNKNOW;
 
-	// TODO: Need add product id (info) detection here...
-
-	if (strncmp(project_id, "BY1", 3) == 0) {
-		rmi4_data->project_id = 0x01;
-		if (rmi4_data->lcd_id == 1)
-			rmi4_data->tp_source = TP_SOURCE_TRULY;
-		else if (rmi4_data->lcd_id == 0)
-			rmi4_data->tp_source = TP_SOURCE_CSOT;
-
-	} else if (strncmp(project_id, "BY2", 3) == 0) {
-		rmi4_data->project_id = 0x02;
+	/* For TouchView TD4322 firmware upgrade -and repair- */
+	if (strstr(saved_command_line, "qcom,mdss_dsi_td4322_csot_fhd_cmd") != NULL) {
+		rmi4_data->tp_source = TP_SOURCE_CSOT;
+	} else if (strstr(saved_command_line, "qcom,mdss_dsi_td4322_innolux_fhd_cmd") != NULL) {
 		rmi4_data->tp_source = TP_SOURCE_INX;
-	} else if (strncmp(project_id, "BY4", 3) == 0) {
-		rmi4_data->project_id = 0x03;
+	} else if (strstr(saved_command_line, "qcom,mdss_dsi_td4322_truly_fhd_cmd") != NULL) {
+		rmi4_data->tp_source = TP_SOURCE_TRULY;
+	} else if (strstr(saved_command_line, "qcom,mdss_dsi_td4328_tianma_fhdplus_cmd") != NULL) {
 		rmi4_data->tp_source = TP_SOURCE_TM;
 	} else {
-		TP_LOGW("unknown project id %s, set project_id = 0x00\n", project_id);
-		rmi4_data->project_id = 0x00;
+		TP_LOGI("Unable to detect the panel type.");
 	}
 
-	TP_LOGI("rmi4_data->project_id = 0x%02X (%s), "
-		"rmi4_data->lcd_id = %d, "
+	TP_LOGI("rmi4_data->lcd_id = %d, "
 		"rmi4_data->tp_source = 0x%02X (%s)\n",
-		rmi4_data->project_id, project_id,
 		rmi4_data->lcd_id,
 		rmi4_data->tp_source,
 		rmi4_data->tp_source == TP_SOURCE_TRULY ? "Truly" :
