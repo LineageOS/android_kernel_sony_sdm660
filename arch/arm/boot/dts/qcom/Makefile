@@ -212,6 +212,7 @@ endif
 
 dtb-$(CONFIG_ARCH_MSMHAMSTER) += msmhamster-rumi.dtb
 
+ifneq ($(CONFIG_ARCH_SONY_GANGES),y)
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-sim.dtb \
 	sdm660-internal-codec-cdp.dtb \
 	sdm660-internal-codec-mtp.dtb \
@@ -324,6 +325,7 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-rumi.dtb \
 	sdm455-cdp.dtb \
 	sdm455-rcm.dtb \
 	sdm455-internal-codec-rcm.dtb
+endif
 
 ifeq ($(CONFIG_ARM64),y)
 always          := $(dtb-y)
