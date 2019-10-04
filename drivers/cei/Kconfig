@@ -1,0 +1,3 @@
+config CEI_HARDWARE_ID
+       bool "CEI Hardware ID Module"
+       default y
