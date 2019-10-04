@@ -117,11 +117,29 @@ config ARCH_SONY_GANGES
     If you enable this config,
     please use SONY Mobile device tree.
 
+config MACH_SONY_DISCOVERY
+    bool "Sony Mobile Discovery"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Discovery device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
 config MACH_SONY_PIONEER
     bool "Sony Mobile Pioneer"
     depends on ARCH_SONY_GANGES
     help
     Support for the SONY Mobile Pioneer device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
+config MACH_SONY_VOYAGER
+    bool "Sony Mobile Voyager"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Voyager device
     which is based on SONY Ganges platform.
     If you enable this config,
     please use SONY Mobile device tree.
