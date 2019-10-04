@@ -181,8 +181,10 @@ static void msm_isp_axi_destroy_stream(
 			stream_info->bufq_handle[k] = 0;
 		stream_info->vfe_mask = 0;
 		stream_info->state = AVAILABLE;
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 		memset(&stream_info->request_queue_cmd,
 			0, sizeof(stream_info->request_queue_cmd));
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 	}
 }
 
@@ -907,6 +909,10 @@ void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 		dual_hw_ms_info.dual_hw_ms_type;
 
 	src_info = &vfe_dev->axi_data.src_info[frame_src];
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+	src_info->request_frame_id = src_info->frame_id +
+	           vfe_dev->axi_data.src_info[frame_src].sof_counter_step;
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 	if (dual_hw_type == DUAL_HW_MASTER_SLAVE) {
 		msm_isp_sync_dual_cam_frame_id(vfe_dev, ms_res, frame_src, ts);
 		if (src_info->dual_hw_ms_info.sync_state ==
@@ -1760,6 +1766,16 @@ static int msm_isp_update_deliver_count(struct vfe_device *vfe_dev,
 			goto done;
 		}
 		stream_info->sw_ping_pong_bit ^= 1;
+
+		if (stream_info->undelivered_request_cnt == 0) {
+			stream_info->activated_framedrop_period =
+				MSM_VFE_STREAM_STOP_PERIOD;
+			stream_info->current_framedrop_period =
+				MSM_VFE_STREAM_STOP_PERIOD;
+			pr_err("%s:configuring period undelivered_request_cnt %d stream %x\n",
+				__func__, stream_info->undelivered_request_cnt, stream_info->stream_id);
+			msm_isp_cfg_framedrop_reg(stream_info);
+		}
 	}
 done:
 	return rc;
@@ -2256,15 +2272,24 @@ static int msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 		ISP_DBG("%s: vfe_id %d send buf done buf-id %d bufq %x\n",
 			__func__, vfe_dev->pdev->id, buf->buf_idx,
 			buf->bufq_handle);
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+		buf_event.frame_id = vfe_dev->axi_data.src_info[VFE_PIX_0].request_frame_id;
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 		msm_isp_send_event(vfe_dev, ISP_EVENT_BUF_DONE,
 			&buf_event);
 		buf->buf_debug.put_state[
 			buf->buf_debug.put_state_last] =
 			MSM_ISP_BUFFER_STATE_PUT_BUF;
 		buf->buf_debug.put_state_last ^= 1;
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 		rc = vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
-		 buf->bufq_handle, buf->buf_idx, time_stamp,
-		 frame_id, stream_info->runtime_output_format);
+			buf->bufq_handle, buf->buf_idx, time_stamp,
+			buf_event.frame_id, stream_info->runtime_output_format);
+#else // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+		rc = vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
+			buf->bufq_handle, buf->buf_idx, time_stamp,
+			frame_id, stream_info->runtime_output_format);
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 		if (rc == -EFAULT) {
 			msm_isp_halt_send_error(vfe_dev,
 					ISP_EVENT_BUF_FATAL_ERROR);
@@ -3754,6 +3779,11 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 			}
 			pr_err_ratelimited("%s:%d fail to cfg HAL buffer stream %x\n",
 				__func__, __LINE__, stream_info->stream_id);
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+			queue_req->cmd_used = 0;
+			list_del(&queue_req->list);
+			stream_info->request_q_cnt--;
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 			return rc;
 		}
 
@@ -3800,6 +3830,11 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 			}
 			pr_err_ratelimited("%s:%d fail to cfg HAL buffer\n",
 				__func__, __LINE__);
+#if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+			queue_req->cmd_used = 0;
+			list_del(&queue_req->list);
+			stream_info->request_q_cnt--;
+#endif // #if defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 			return rc;
 		}
 	} else {
