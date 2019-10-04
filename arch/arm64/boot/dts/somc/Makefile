@@ -1,4 +1,9 @@
 dtb-$(CONFIG_MACH_SONY_PIONEER)	+= sdm630-ganges-pioneer.dtb
+dtb-$(CONFIG_MACH_SONY_PIONEER_DSDS)	+= sdm630-ganges-pioneer_dsds.dtb
+dtb-$(CONFIG_MACH_SONY_DISCOVERY)	+= sdm630-ganges-discovery.dtb
+dtb-$(CONFIG_MACH_SONY_DISCOVERY_DSDS)	+= sdm630-ganges-discovery_dsds.dtb
+dtb-$(CONFIG_MACH_SONY_VOYAGER)	+= sdm630-ganges-voyager.dtb
+dtb-$(CONFIG_MACH_SONY_VOYAGER_DSDS)	+= sdm630-ganges-voyager_dsds.dtb
 dtb-$(CONFIG_MACH_SONY_KIRIN) += sdm630-ganges-kirin.dtb
 dtb-$(CONFIG_MACH_SONY_KIRIN_DSDS) += sdm630-ganges-kirin_dsds.dtb
 dtb-$(CONFIG_MACH_SONY_MERMAID) += sdm636-ganges-mermaid.dtb \
