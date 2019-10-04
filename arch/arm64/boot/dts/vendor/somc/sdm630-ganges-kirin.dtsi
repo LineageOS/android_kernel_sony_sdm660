@@ -17,7 +17,6 @@
 #include "camera/sdm630-ganges-kirin-camera-sensor.dtsi"
 #include "battery/charger-ganges-kirin.dtsi"
 #include "display/dsi-panel-nonformal-kirin.dtsi"
-#include "sdm630-ganges-nfc_pn553.dtsi"
 
 &soc {
 	pinctrl@03000000 {
