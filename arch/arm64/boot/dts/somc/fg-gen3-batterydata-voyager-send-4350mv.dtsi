@@ -10,57 +10,57 @@
  * GNU General Public License for more details.
  */
 
-qcom,sm12_somc_3200mah_1 {
+qcom,voyager_send_4350mv {
 	qcom, = <24>;
-	somc,initial-capacity-uah = <3200000>;
-	qcom,max-voltage-uv = <4380000>;
-	qcom,nom-batt-capacity-mah = <3200>;
-	qcom,fg-cc-cv-threshold-mv = <4370>;
+	somc,initial-capacity-uah = <3580000>;
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <3430>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
 	qcom,fastchg-current-ma = <2400>;
 	qcom,batt-id-kohm = <330>;
 	qcom,battery-beta = <4050>;
-	qcom,battery-type = "1309-2675-1";
-	qcom,checksum = <0xD96F>;
+	qcom,battery-type = "1308-3580";
+	qcom,checksum = <0xE09D>;
 	qcom,gui-version = "PM660GUI - 0.0.0.44";
 
 	qcom,fg-profile-data = [
-		 86 1F 99 05
-		 70 0A 5F 06
-		 A8 1C 61 FB
-		 67 FD 6F F5
-		 7B 18 DD 22
-		 9F 45 C7 52
+		 67 1F D9 05
+		 37 0A 03 FD
+		 F2 1C D1 F2
+		 8E 02 6F 0D
+		 22 18 B5 22
+		 33 3C AE 4B
 		 58 00 00 00
-		 0D 00 00 00
-		 00 00 6F C2
-		 AA D5 BA CA
-		 25 00 08 00
-		 D5 DC B5 DD
-		 EB 05 37 FA
-		 F5 05 1C 0A
-		 71 E3 60 33
-		 1F 06 09 20
+		 0F 00 00 00
+		 00 00 5B B2
+		 A9 CC 07 00
+		 23 00 08 00
+		 92 E5 97 D5
+		 A9 05 67 FA
+		 A2 06 C0 0A
+		 BB EB EA 32
+		 1C 06 09 20
 		 27 00 14 00
-		 97 1F CD 05
-		 3C 0A 98 06
-		 96 1C CB 02
-		 3F 0D DD 03
-		 AB 18 C8 22
-		 BC 45 91 52
-		 5B 00 00 00
-		 0C 00 00 00
-		 00 00 33 CC
-		 4E BA C8 CA
-		 20 00 00 00
-		 E2 E3 B5 DD
-		 25 FC 01 FA
-		 5C 06 22 03
-		 C6 D3 C8 13
-		 AA 33 CC FF
+		 5B 1F 61 FC
+		 CE 03 D4 06
+		 2C 1D 29 EB
+		 F9 0A D2 14
+		 96 18 D6 22
+		 A1 45 DA 52
+		 56 00 00 00
+		 0E 00 00 00
+		 00 00 47 CD
+		 A4 C2 64 BD
+		 1D 00 00 00
+		 A4 E3 97 D5
+		 C6 05 25 FA
+		 43 FD D8 03
+		 F6 06 0E 1A
+		 A2 33 CC FF
 		 07 10 00 00
-		 34 0D 66 46
-		 20 00 40 00
-		 AE 01 0A FA
+		 FA 0D 99 45
+		 1D 00 40 00
+		 89 01 0A FA
 		 FF 00 00 00
 		 00 00 00 00
 		 00 00 00 00
@@ -81,4 +81,12 @@ qcom,sm12_somc_3200mah_1 {
 		 00 00 00 00
 		 00 00 00 00
 	];
+
+        somc,step-cfg = <
+                (-2550) 50    0 4500    0 4200 1
+                   50  100    0 4500  650 4200 2
+                  100  450    0 4500 2400 4350 3
+                  450  550    0 4500  650 4200 4
+                  550 2550    0 4500    0 4200 5
+        >;
 };

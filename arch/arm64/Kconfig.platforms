@@ -126,6 +126,51 @@ config MACH_SONY_PIONEER
     If you enable this config,
     please use SONY Mobile device tree.
 
+config MACH_SONY_PIONEER_DSDS
+    bool "Sony Mobile Pioneer Dsds"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Pioneer DS device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
+config MACH_SONY_DISCOVERY
+    bool "Sony Mobile Discovery"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Discovery device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
+config MACH_SONY_DISCOVERY_DSDS
+    bool "Sony Mobile Discovery Dsds"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Discovery DS device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
+config MACH_SONY_VOYAGER
+    bool "Sony Mobile Voyager"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Voyager device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
+config MACH_SONY_VOYAGER_DSDS
+    bool "Sony Mobile Voyager Dsds"
+    depends on ARCH_SONY_GANGES
+    help
+    Support for the SONY Mobile Voyager DS device
+    which is based on SONY Ganges platform.
+    If you enable this config,
+    please use SONY Mobile device tree.
+
 config MACH_SONY_KIRIN
     bool "Sony Mobile Kirin"
     depends on ARCH_SONY_GANGES
