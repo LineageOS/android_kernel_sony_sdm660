@@ -893,4 +893,11 @@ config INPUT_SC27XX_VIBRA
 	  To compile this driver as a module, choose M here. The module will
 	  be called sc27xx_vibra.
 
+config INPUT_S5712
+	tristate "S5712 driver support"
+	default n
+	help
+	  Say Y here if you want to support S-5712
+	  as bipolar detection device.
+
 endif
