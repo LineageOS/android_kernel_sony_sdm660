@@ -18,6 +18,11 @@
 #include "sdm630-ganges-nfc_pn553.dtsi"
 
 &soc {
+	ceihwid {
+		compatible = "ceihwid";
+		ceihwid_vcc-supply = <&pm660l_l6>;
+	};
+
 	fpc1020 {
 		status = "ok";
 		compatible = "fpc,fpc1020";
