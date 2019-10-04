@@ -16,7 +16,6 @@
 #include "sdm630-ganges-mermaid-camera-sensor.dtsi"
 #include "dsi-panel-nonformal-mermaid.dtsi"
 #include "sdm636-ganges-mermaid-touch.dtsi"
-#include "sdm630-ganges-nfc_pn553.dtsi"
 
 &soc {
 	pinctrl@03000000 {
