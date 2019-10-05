@@ -25,7 +25,7 @@
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
-#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 #define GPIO_NUM_IDX 0
 #define GPIO_CNT_IDX 1
 #define GPIO_CNT_SIZE  2
@@ -76,7 +76,62 @@ static int msm_camera_release_gpio(int sensor_gpio, int sensor_gpio_num)
 
 	return 0;
 }
-#endif // #if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+
+#elif defined(CONFIG_MACH_SONY_PIONEER) || \
+	  defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	  defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	  defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	  defined(CONFIG_MACH_SONY_VOYAGER) || \
+	  defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
+#define GPIO_NUM_IDX 0
+#define GPIO_CNT_IDX 1
+#define GPIO_CNT_SIZE  6
+#define GPIO_TO_IDX(sensor_gpio) ((sensor_gpio - SENSOR_GPIO_VIO) * 2)
+
+static int mGpioCnt[GPIO_CNT_SIZE][2] = {{0}, {0} };
+
+static int msm_camera_acquire_gpio(int sensor_gpio, int sensor_gpio_num)
+{
+	if (mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_NUM_IDX] == sensor_gpio_num) {
+		mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX]++;
+		return mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX];
+	} else if (mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_NUM_IDX] == sensor_gpio_num) {
+		mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX]++;
+		return mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX];
+	} else {
+		if (mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_NUM_IDX] == 0) {
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_NUM_IDX] = sensor_gpio_num;
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX]++;
+			return mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX];
+		} else if (mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_NUM_IDX] == 0) {
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_NUM_IDX] = sensor_gpio_num;
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX]++;
+			return mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX];
+		} else
+			pr_err("%s: acquire gpio reference failed, sensor_gpio = %d, gpio_num = %d\n", __func__, sensor_gpio, sensor_gpio_num);
+	}
+	return 0;
+}
+
+static int msm_camera_release_gpio(int sensor_gpio, int sensor_gpio_num)
+{
+	if (mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_NUM_IDX] == sensor_gpio_num) {
+		mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX]--;
+		if (mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX] == 0)
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_NUM_IDX] = 0;
+		return mGpioCnt[GPIO_TO_IDX(sensor_gpio)][GPIO_CNT_IDX];
+	} else if (mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_NUM_IDX] == sensor_gpio_num) {
+		mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX]--;
+		if (mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX] == 0)
+			mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_NUM_IDX] = 0;
+		return mGpioCnt[GPIO_TO_IDX(sensor_gpio) + 1][GPIO_CNT_IDX];
+	} else {
+		pr_err("%s: release gpio reference failed, sensor_gpio = %d, gpio_num = %d\n", __func__, sensor_gpio, sensor_gpio_num);
+	}
+	return 0;
+}
+
+#endif
 
 int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 	int num_vreg, struct msm_sensor_power_setting *power_setting,
@@ -1478,7 +1533,16 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 	enum msm_camera_device_type_t device_type,
 	struct msm_camera_i2c_client *sensor_i2c_client)
 {
-#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) ||	defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+#if defined(CONFIG_MACH_SONY_KIRIN) || \
+	defined(CONFIG_MACH_SONY_KIRIN_DSDS) || \
+	defined(CONFIG_MACH_SONY_MERMAID) || \
+	defined(CONFIG_MACH_SONY_MERMAID_DSDS) ||\
+	defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
 	int count = 0;
 #endif // #if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 	int rc = 0, index = 0, no_gpio = 0, ret = 0;
@@ -1558,7 +1622,16 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val],
 				(int) power_setting->config_val);
-#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) ||	defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+#if defined(CONFIG_MACH_SONY_KIRIN) || \
+	defined(CONFIG_MACH_SONY_KIRIN_DSDS) || \
+	defined(CONFIG_MACH_SONY_MERMAID) || \
+	defined(CONFIG_MACH_SONY_MERMAID_DSDS) ||\
+	defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
 			if ((power_setting->seq_val == SENSOR_GPIO_VIO || power_setting->seq_val == SENSOR_GPIO_VANA || power_setting->seq_val == SENSOR_GPIO_VDIG)
 				&& power_setting->config_val == GPIO_OUT_HIGH) {
 				count = msm_camera_acquire_gpio(power_setting->seq_val, ctrl->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val]);
@@ -1709,7 +1782,16 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	enum msm_camera_device_type_t device_type,
 	struct msm_camera_i2c_client *sensor_i2c_client)
 {
-#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) ||	defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+#if defined(CONFIG_MACH_SONY_KIRIN) || \
+	defined(CONFIG_MACH_SONY_KIRIN_DSDS) || \
+	defined(CONFIG_MACH_SONY_MERMAID) || \
+	defined(CONFIG_MACH_SONY_MERMAID_DSDS) || \
+	defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
 	int count = 0;
 #endif // #if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
 	int index = 0, ret = 0;
@@ -1748,7 +1830,16 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[pd->seq_val])
 				continue;
-#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined( CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+#if defined(CONFIG_MACH_SONY_KIRIN) || \
+	defined(CONFIG_MACH_SONY_KIRIN_DSDS) || \
+	defined(CONFIG_MACH_SONY_MERMAID) || \
+	defined(CONFIG_MACH_SONY_MERMAID_DSDS) ||\
+	defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
 			if ((pd->seq_val == SENSOR_GPIO_VIO || pd->seq_val == SENSOR_GPIO_VANA || pd->seq_val == SENSOR_GPIO_VDIG) && pd->config_val == GPIO_OUT_LOW) {
 				count = msm_camera_release_gpio(pd->seq_val, ctrl->gpio_conf->gpio_num_info->gpio_num[pd->seq_val]);
 				pr_err("PD: mGpioCnt[%d]: %d", pd->seq_val, count);
