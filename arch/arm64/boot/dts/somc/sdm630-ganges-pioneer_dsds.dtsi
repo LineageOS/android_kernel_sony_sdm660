@@ -12,13 +12,3 @@
 
 #include "sdm630-ganges-pioneer.dtsi"
 #include <dt-bindings/gpio/gpio.h>
-
-&soc {
-	sim_detect {
-		sim2_det {
-			label = "sim2-detection";
-			gpios = <&tlmm 86 GPIO_ACTIVE_LOW>;
-			debounce-interval = <10>;
-		};
-	};
-};
