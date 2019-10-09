@@ -56,7 +56,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spi/spi.h>
 #include <soc/qcom/scm.h>
-//#include <linux/cei_hw_id.h>
+#include <linux/cei_hw_id.h>
 
 #include <linux/wakelock.h>
 #include "et510.h"
@@ -855,13 +855,16 @@ static int etspi_probe(struct platform_device *pdev)
 	unsigned long minor;
 	struct regulator *vcc_ana;
 	//int retval;
-/*	char *fpname = get_cei_fp_id();
+
+#if defined(CONFIG_MACH_SONY_DISCOVERY) || defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || defined(CONFIG_MACH_SONY_PIONEER) || defined(CONFIG_MACH_SONY_PIONEER_DSDS) || defined(CONFIG_MACH_SONY_VOYAGER) || defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
+	char *fpname = get_cei_fp_id();
 
 	if (!strncmp(fpname, "fpc1035", strlen(fpname))) {
 		printk("fingerprint module is not et512\n");
 		return -1;
 	}
-*/
+#endif
+
 	DEBUG_PRINT("%s initial\n", __func__);
 
 	BUILD_BUG_ON(N_SPI_MINORS > 256);
