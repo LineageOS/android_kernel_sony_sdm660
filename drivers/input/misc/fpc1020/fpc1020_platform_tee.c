@@ -496,12 +496,14 @@ static int fpc1020_probe(struct platform_device *pdev)
 	struct device_node *np = dev->of_node;
 	struct fpc1020_data *fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
 			GFP_KERNEL);
-	char *fpname = get_cei_fp_id();
 
+#if defined(CONFIG_MACH_SONY_DISCOVERY) || defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || defined(CONFIG_MACH_SONY_PIONEER) || defined(CONFIG_MACH_SONY_PIONEER_DSDS) || defined(CONFIG_MACH_SONY_VOYAGER) || defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
+	char *fpname = get_cei_fp_id();
 	if (!strncmp(fpname, "et516", strlen(fpname))) {
 		printk("fingerprint module is not fpc1035\n");
 		return -1;
 	}
+#endif
 
 	if (!fpc1020) {
 		dev_err(dev,
