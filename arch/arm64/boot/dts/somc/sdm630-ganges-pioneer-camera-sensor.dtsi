@@ -42,12 +42,12 @@
 		cam_sensor_front2_active: cam_sensor_front2_active {
 			/* RESET */
 			mux {
-				pins = "gpio42";
+				pins = "gpio48", "gpio51";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio42";
+				pins = "gpio48", "gpio51";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -56,12 +56,12 @@
 		cam_sensor_front2_suspend: cam_sensor_front2_suspend {
 			/* RESET */
 			mux {
-				pins = "gpio42";
+				pins = "gpio48", "gpio51";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio42";
+				pins = "gpio48", "gpio51";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -202,9 +202,9 @@
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <105000>;
-		pinctrl-0 = <&cam_sensor_mclk2_active
+		pinctrl-0 = <&cam_sensor_mclk3_active
 				 &cam_sensor_front2_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
 				 &cam_sensor_front2_suspend>;
 		gpios = <&tlmm 35 0>,
 			<&tlmm 42 0>,
@@ -317,9 +317,9 @@
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <105000>;
-		pinctrl-0 = <&cam_sensor_mclk2_active
+		pinctrl-0 = <&cam_sensor_mclk3_active
 				 &cam_sensor_front2_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
 				 &cam_sensor_front2_suspend>;
 		gpios = <&tlmm 35 0>,
 			<&tlmm 42 0>,
