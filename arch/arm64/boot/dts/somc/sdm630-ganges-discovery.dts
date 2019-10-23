@@ -26,6 +26,16 @@
 			<0x0001001b 0x0201011a 0x0 0x0>;
 };
 
+&cci {
+	qcom,camera@1 {
+		qcom,led-flash-src = <&led_flash1>;
+	};
+
+	qcom,camera@2 {
+		qcom,led-flash-src = <&led_flash1>;
+	};
+};
+
 &int_codec {
 	qcom,model = "sdm660-snd-card-mtp";
 };

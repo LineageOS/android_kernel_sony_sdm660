@@ -24,6 +24,28 @@
 	};
 };
 
+&spmi_bus {
+	pm660l_3: qcom,pm660l@3 {
+		flash_led: qcom,leds@d300 {
+			pm660l_torch0: qcom,torch_0 {
+				qcom,current-ma = <100>;
+			};
+
+			pm660l_torch1: qcom,torch_1 {
+				qcom,current-ma = <100>;
+			};
+
+			pm660l_switch0: qcom,led_switch_0 {
+				qcom,led-mask = <1>;
+			};
+
+			pm660l_switch1: qcom,led_switch_1 {
+				qcom,led-mask = <2>;
+			};
+		};
+	};
+};
+
 &soc {
 	led_flash0: qcom,camera-flash@0 {
 		qcom,flash-source = <&pm660l_flash0>;
@@ -308,7 +330,6 @@
 	};
 
 	qcom,camera@1 {
-		qcom,led-flash-src = <&led_flash1>;
 		qcom,ois-src = <&ois0>;
 		cam_vio-supply = <&pm660_l18>;
 		/delete-property/	cam_vana-supply;
