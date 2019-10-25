@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, 2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -48,22 +48,32 @@ void mac_trace_new(tpAniSirGlobal pMac, uint8_t module, uint8_t code,
 		   uint16_t session, uint32_t data);
 uint8_t *mac_trace_get_cfg_msg_string(uint16_t cfgMsg);
 uint8_t *mac_trace_get_lim_msg_string(uint16_t limMsg);
+uint8_t *mac_trace_get_wma_msg_string(uint16_t wmaMsg);
 uint8_t *mac_trace_get_sme_msg_string(uint16_t smeMsg);
 uint8_t *mac_trace_get_info_log_string(uint16_t infoLog);
 
-#else
-
-#define mac_trace_get_cfg_msg_string(cfgMsg) "NULL"
-#define mac_trace_get_lim_msg_string(limMsg) "NULL"
-#define mac_trace_get_sme_msg_string(smeMsg) "NULL"
-#define mac_trace_get_info_log_string(infoLog) "NULL"
-
-#endif
-uint8_t *mac_trace_get_wma_msg_string(uint16_t wmaMsg);
 uint8_t *mac_trace_get_neighbour_roam_state(uint16_t neighbourRoamState);
 uint8_t *mac_trace_getcsr_roam_state(uint16_t csr_roamState);
 uint8_t *mac_trace_getcsr_roam_sub_state(uint16_t csr_roamSubState);
 uint8_t *mac_trace_get_lim_sme_state(uint16_t limState);
 uint8_t *mac_trace_get_lim_mlm_state(uint16_t mlmState);
+uint8_t *mac_trace_get_tl_state(uint16_t tlState);
+
+#else
+
+#define mac_trace_get_cfg_msg_string(cfgMsg) "NULL"
+#define mac_trace_get_lim_msg_string(limMsg) "NULL"
+#define mac_trace_get_wma_msg_string(wmaMsg) "NULL"
+#define mac_trace_get_sme_msg_string(smeMsg) "NULL"
+#define mac_trace_get_info_log_string(infoLog) "NULL"
+
+#define mac_trace_get_neighbour_roam_state(neighbourRoamState) "NULL"
+#define mac_trace_getcsr_roam_state(csr_roamState) "NULL"
+#define mac_trace_getcsr_roam_sub_state(csr_roamSubState) "NULL"
+#define mac_trace_get_lim_sme_state(limState) "NULL"
+#define mac_trace_get_lim_mlm_state(mlmState) "NULL"
+#define mac_trace_get_tl_state(tlState) "NULL"
+
+#endif
 
 #endif
