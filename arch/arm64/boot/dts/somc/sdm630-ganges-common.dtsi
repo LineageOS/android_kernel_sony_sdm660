@@ -290,3 +290,18 @@
 		maximum-speed = "high-speed";
 	};
 };
+
+&firmware {
+	android {
+		fstab {
+			android_lta_label: lta-label {
+				compatible = "android,lta-label";
+				dev = "/dev/block/platform/soc/c0c4000.sdhci/by-name/LTALabel";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1";
+				fsmgr_flags = "nofail";
+				status = "ok";
+			};
+		};
+	};
+};
