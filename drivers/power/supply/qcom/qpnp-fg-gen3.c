@@ -5027,6 +5027,12 @@ static int fg_psy_set_property(struct power_supply *psy,
 			return rc;
 		break;
 #endif
+	case POWER_SUPPLY_PROP_RECHARGE_VOLTAGE:
+		chip->dt.recharge_volt_thr_mv = pval->intval;
+		rc = fg_adjust_recharge_voltage(chip);
+		if (rc < 0)
+			pr_err("Error in adjusting recharge_voltage, rc=%d\n", rc);
+		break;
 	default:
 		break;
 	}
@@ -5051,6 +5057,7 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_REAL_TEMP:
 	case POWER_SUPPLY_PROP_BATT_AGING_LEVEL:
 #endif
+	case POWER_SUPPLY_PROP_RECHARGE_VOLTAGE:
 		return 1;
 	default:
 		break;
@@ -5137,6 +5144,7 @@ static enum power_supply_property fg_psy_props[] = {
 	POWER_SUPPLY_PROP_REAL_TEMP,
 	POWER_SUPPLY_PROP_BATT_AGING_LEVEL,
 #endif
+	POWER_SUPPLY_PROP_RECHARGE_VOLTAGE,
 };
 
 static const struct power_supply_desc fg_psy_desc = {
