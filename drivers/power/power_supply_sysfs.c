@@ -330,6 +330,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charger_type_determined),
 	POWER_SUPPLY_ATTR(batt_aging_level),
 	POWER_SUPPLY_ATTR(fcc_stepper_enable),
+	POWER_SUPPLY_ATTR(recharge_voltage),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
