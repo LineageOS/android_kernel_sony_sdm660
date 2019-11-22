@@ -827,7 +827,6 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 {
 	int32_t rc = -EFAULT;
 	int32_t i = 0;
-	struct msm_camera_i2c_seq_reg_array *reg_setting;
 	enum msm_camera_i2c_reg_addr_type save_addr_type;
 	CDBG("Enter\n");
 
@@ -848,59 +847,17 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 		}
 
 		switch (settings[i].i2c_operation) {
-		case MSM_ACT_WRITE: {
-			switch (settings[i].data_type) {
-			case MSM_CAMERA_I2C_BYTE_DATA:
-			case MSM_CAMERA_I2C_WORD_DATA:
-				rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
-					&a_ctrl->i2c_client,
-					settings[i].reg_addr,
-					settings[i].reg_data,
-					settings[i].data_type);
-				break;
-			case MSM_CAMERA_I2C_DWORD_DATA:
-				reg_setting =
-				kzalloc(sizeof(struct msm_camera_i2c_seq_reg_array),
-					GFP_KERNEL);
-				if (!reg_setting)
-					return -ENOMEM;
-
-				reg_setting->reg_addr = settings[i].reg_addr;
-				reg_setting->reg_data[0] = (uint8_t)
-					((settings[i].reg_data &
-					0xFF000000) >> 24);
-				reg_setting->reg_data[1] = (uint8_t)
-					((settings[i].reg_data &
-					0x00FF0000) >> 16);
-				reg_setting->reg_data[2] = (uint8_t)
-					((settings[i].reg_data &
-					0x0000FF00) >> 8);
-				reg_setting->reg_data[3] = (uint8_t)
-					(settings[i].reg_data & 0x000000FF);
-				reg_setting->reg_data_size = 4;
-				rc = a_ctrl->i2c_client.i2c_func_tbl->
-					i2c_write_seq(&a_ctrl->i2c_client,
-					reg_setting->reg_addr,
-					reg_setting->reg_data,
-					reg_setting->reg_data_size);
-				kfree(reg_setting);
-				reg_setting = NULL;
-				if (rc < 0)
-					return rc;
-				break;
-
-			default:
-				pr_err("Unsupport data type: %d\n",
-					settings[i].data_type);
-				break;
-			}
-
+		case MSM_ACT_WRITE:
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+				&a_ctrl->i2c_client,
+				settings[i].reg_addr,
+				settings[i].reg_data,
+				settings[i].data_type);
 			if (settings[i].delay > 20)
 				msleep(settings[i].delay);
 			else if (0 != settings[i].delay)
 				usleep_range(settings[i].delay * 1000,
 					(settings[i].delay * 1000) + 1000);
-		}
 			break;
 		case MSM_ACT_POLL:
 			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_poll(
