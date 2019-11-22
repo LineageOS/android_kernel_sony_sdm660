@@ -40,7 +40,7 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION 0x206a
 
 #include "cei_touch_log.h"
-/* #include <linux/cei_hw_id.h> */
+#include <linux/cei_hw_id.h>
 #include <linux/version.h>
 #ifdef CONFIG_FB
 #include <linux/notifier.h>
@@ -126,7 +126,6 @@
 #define MASK_1BIT 0x01
 
 #define TP_SOURCE_TRULY		0x00
-#define TP_SOURCE_CSOT		0x01
 #define TP_SOURCE_INX		0x02
 #define TP_SOURCE_TM		0x03
 #define TP_SOURCE_UNKNOW	0xFF

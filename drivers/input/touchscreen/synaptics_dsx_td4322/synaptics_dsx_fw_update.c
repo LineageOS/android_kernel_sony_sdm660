@@ -55,11 +55,6 @@
 //#include "firmware/PR2610092-td4322-i2c_sony_Truly-00170201.h"
 //#include "firmware/PR2610092-td4322-i2c_sony_Truly-00170203.h"
 #include "firmware/PR2610092-td4322-i2c_sony_Truly-00170204.h"
-//csot
-//#include "firmware/PR2594578-td4322-i2c-csot_sony-SM12-01170204.h"
-//#nclude "firmware/PR2594578-td4322-i2c-csot_sony-SM12-01170205.h"
-//#include "firmware/PR2617052-td4322-i2c-csot_sony-01170301.h"
-#include "firmware/PR2617052-td4322-i2c-csot_sony-01170302.h"
 //inx fw
 //#include "firmware/PD060JC-01M_DS5_v12.4.1.1015_PR2470523-td4322-i2c-02170000.h"
 //#include "firmware/PR2526806-td4322-i2c-innolux6p_sony_SM22_02170001.h"
@@ -67,7 +62,8 @@
 #include "firmware/PR2610092-td4322-i2c-innolux6p_sony_profile-02170102.h"
 //tm fw
 //#include "firmware/PR2708147_SonySM42_Tianma07_CTPFW_TD4328-03170001.h"
-#include "firmware/PR2734534-td4328-i2c-tianma-sony-03170100.h"
+/*#include "firmware/PR2734534-td4328-i2c-tianma-sony-03170100.h"*/
+#include "firmware/PR2743968-td4328-i2c-tianma-sony-03170203.h"
 #ifdef CONFIG_FB
 #define WAIT_FOR_FB_READY
 #define FB_READY_WAIT_MS 100
@@ -2459,9 +2455,32 @@ static enum flash_area fwu_go_nogo(void)
 		goto exit;
 	}
 
+	/* CSOT TP module no update*/
+	if (strncmp(rmi4_data->rmi4_mod_info.product_id_string, "SM12CSOT", 8) == 0) {
+		TP_LOGI("CSOT TP module : No update\n");
+		flash_area = NONE;
+		goto exit;
+	}
+
 	/* Update both UI and config if device is in bootloader mode */
 	if (fwu->bl_mode_device) {
 		TP_LOGI("Update reason: Device is in bootloader mode\n");
+		flash_area = UI_FIRMWARE;
+		goto exit;
+	}
+
+
+	/* Detect the mismatch firmware in module */
+	if ((fwu->rmi4_data->tp_source == TP_SOURCE_TRULY &&
+		((fwu->rmi4_data->config_id >> 24) & 0xff) != 0x00) ||
+	    (fwu->rmi4_data->tp_source == TP_SOURCE_INX &&
+		((fwu->rmi4_data->config_id >> 24) & 0xff) != 0x02) ||
+	    (fwu->rmi4_data->tp_source == TP_SOURCE_TM &&
+		((fwu->rmi4_data->config_id >> 24) & 0xff) != 0x03)) {
+		TP_LOGI("Update reason: Module has a mismatch version. "
+			"tp_source = 0x%02X, but config_id = 0x%08X\n",
+				fwu->rmi4_data->tp_source,
+				fwu->rmi4_data->config_id);
 		flash_area = UI_FIRMWARE;
 		goto exit;
 	}
@@ -4331,10 +4350,6 @@ static void fwu_startup_fw_update_work(struct work_struct *work)
 			/* SM12 Truly */
 			synaptics_fw_updater(FirmwareImage_TRULY);
 
-		} else if (rmi4_data->tp_source == TP_SOURCE_CSOT) {
-			/* SM12 CSOT */
-			synaptics_fw_updater(FirmwareImage_CSOT);
-
 		} else if (rmi4_data->tp_source == TP_SOURCE_INX) {
 			/* SM22 INX */
 			synaptics_fw_updater(FirmwareImage_INX);
@@ -4709,10 +4724,6 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
 	unsigned char attr_count;
-
-	/*dean tag : for bbbu */
-	bool dean_tmp = true;
-
 	struct pdt_properties pdt_props;
 
 	if (fwu) {
@@ -4786,19 +4797,14 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 #ifdef DO_STARTUP_FW_UPDATE
-	/* dean tag : for bbbu */
-	/*
 	TP_LOGI("androidboot.mode=%s\n", get_cei_android_boot_mode());
 	if (strcmp("charger", get_cei_android_boot_mode()) == 0) {
-	*/
-	if (dean_tmp) {
 		TP_LOGI("Skip startup firmware update in charger mode\n");
 	} else {
 		fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
 		INIT_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
 		queue_work(fwu->fwu_workqueue,
 				&fwu->fwu_work);
-
 	}
 #endif
 

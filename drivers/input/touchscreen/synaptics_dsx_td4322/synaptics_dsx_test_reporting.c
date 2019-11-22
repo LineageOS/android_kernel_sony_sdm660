@@ -272,7 +272,6 @@ unsigned int  ELEC_OPEN_TEST_LIMIT_TWO = 80;
 #define TEST_DEFAULT_SAVE_PATH "/data/"
 //#define TEST_DEFAULT_RESULT_FILE_NAME "td4322_self_test_data.txt"
 #define TEST_TRULY_RESULT_FILE_NAME "td4322_self_test_data_truly.txt"
-#define TEST_CSOT_RESULT_FILE_NAME "td4322_self_test_data_csot.txt"
 #define TEST_INX_RESULT_FILE_NAME "td4322_self_test_data_inx.txt"
 #define TEST_TM_RESULT_FILE_NAME "td4328_self_test_data_tm.txt"
 #define TEST_DATA_SIZE 40 * 1024
@@ -3454,10 +3453,6 @@ static ssize_t test_sysfs_tddi_ee_short_store(struct device *dev,
 		EE_SHORT_TEST_LIMIT_PART1 =210;
 		EE_SHORT_TEST_LIMIT_PART2	 = 85;
 	}
-	else if(rmi4_data->tp_source == 0x01){//SM12 CSOT
-		EE_SHORT_TEST_LIMIT_PART1 =118;
-		EE_SHORT_TEST_LIMIT_PART2	 = 89;
-	}
 	else if(rmi4_data->tp_source == 0x02){//SM22 INX
 		EE_SHORT_TEST_LIMIT_PART1 = 100;
 		EE_SHORT_TEST_LIMIT_PART2	 = 90;
@@ -3775,9 +3770,6 @@ static ssize_t test_sysfs_tddi_noise_store(struct device *dev,
 #endif
 
 	if(rmi4_data->tp_source == 0x00){ //SM12 Truly
-		NOISE_TEST_LIMIT = 85;
-	}
-	else if(rmi4_data->tp_source == 0x01){//SM12 CSOT
 		NOISE_TEST_LIMIT = 85;
 	}
 	else if(rmi4_data->tp_source == 0x02){//SM22 INX
@@ -4838,12 +4830,6 @@ static ssize_t test_sysfs_tddi_amp_electrode_open_store(struct device *dev,
 		ELEC_OPEN_TEST_LIMIT_ONE  = 450;
 		ELEC_OPEN_TEST_LIMIT_TWO = 80;
 	}
-	else if(rmi4_data->tp_source == 0x01){//SM12 CSOT
-		ELEC_OPEN_INT_DUR_ONE = 16;
-		ELEC_OPEN_INT_DUR_TWO = 52;
-		ELEC_OPEN_TEST_LIMIT_ONE  = 450;
-		ELEC_OPEN_TEST_LIMIT_TWO = 80;
-	}
 	else if(rmi4_data->tp_source == 0x02){//SM22 INX
 		ELEC_OPEN_INT_DUR_ONE = 16;
 		ELEC_OPEN_INT_DUR_TWO = 62;
@@ -5459,11 +5445,6 @@ static ssize_t test_sysfs_self_test_show(struct device *dev,
 		sprintf(result_file_name, "%s%s",
 			TEST_DEFAULT_SAVE_PATH,
 			TEST_TRULY_RESULT_FILE_NAME);
-	}
-	else if(rmi4_data->tp_source == 0x01){
-		sprintf(result_file_name, "%s%s",
-			TEST_DEFAULT_SAVE_PATH,
-			TEST_CSOT_RESULT_FILE_NAME);
 	}
 	else if(rmi4_data->tp_source == 0x02){
 		sprintf(result_file_name, "%s%s",
