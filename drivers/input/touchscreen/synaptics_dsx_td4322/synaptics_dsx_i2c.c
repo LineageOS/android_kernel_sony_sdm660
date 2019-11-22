@@ -488,8 +488,8 @@ static void synaptics_rmi4_i2c_dev_release(struct device *dev)
 
 	return;
 }
-
-#define CEI_I2C_ADDR_20_WORKAROUNG
+/*android P close define*/
+/*#define CEI_I2C_ADDR_20_WORKAROUNG*/
 
 static int synaptics_rmi4_i2c_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
