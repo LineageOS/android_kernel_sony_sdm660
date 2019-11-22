@@ -23,6 +23,15 @@
 #include <linux/wakelock.h>
 #endif
 #include "storm-watch.h"
+#if defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
+#include <linux/alarmtimer.h>
+#define CUSTOM_SOFT_CHARGE
+#endif
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -500,6 +509,14 @@ struct smb_charger {
 	int chg_prechg_safety_time;
 	int chg_fastchg_safety_time;
 	/* safety timer */
+
+#ifdef CUSTOM_SOFT_CHARGE
+	int soft_charge_batt_type;
+	struct work_struct soft_charge_work;
+	struct alarm soft_charge_timer;
+	int batt_type;
+	int soft_charge31_LV1_data[4];
+#endif
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
