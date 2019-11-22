@@ -116,6 +116,10 @@ bool fw_is_update = true;
 #define F12_WAKEUP_GESTURE_MODE 0x02
 #define F12_UDG_DETECT 0x0f
 
+static void synaptics_rmi4_sleep_enable(struct synaptics_rmi4_data *rmi4_data,
+                bool enable);
+static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
+                bool enable, bool attn_only);
 static int synaptics_rmi4_check_status(struct synaptics_rmi4_data *rmi4_data,
 		bool *was_in_bl_mode);
 static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data);
@@ -202,6 +206,13 @@ static ssize_t synaptics_rmi4_product_id_show(struct device *dev,
 static ssize_t synaptics_fw_is_update_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 static ssize_t cei_tp_bl_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+static ssize_t cei_rmi4_enable_irq_store(struct device *dev,
+               struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t cei_cmd_rmi4_tpfwver_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t cei_cmd_rmi4_tpsource_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 struct synaptics_rmi4_f01_device_status {
@@ -755,6 +766,17 @@ static struct device_attribute attrs[] = {
 	__ATTR(tpblver, S_IRUGO,
 			cei_tp_bl_version_show,
 			synaptics_rmi4_store_error),
+	__ATTR(fw_version, S_IRUGO,
+			cei_cmd_rmi4_tpfwver_show,
+			NULL),
+	__ATTR(tp_source, S_IRUGO,
+			cei_cmd_rmi4_tpsource_show,
+			NULL),
+	__ATTR(smx2_enable_irq, (S_IWUSR | S_IWGRP),
+                        synaptics_rmi4_show_error,
+                        cei_rmi4_enable_irq_store),
+
+
 };
 
 static struct kobj_attribute virtual_key_map_attr = {
@@ -778,6 +800,86 @@ static ssize_t synaptics_fw_is_update_show(struct device *dev,
 *Note:The Register number is different in each synaptics ICs.
 ***************************************************************************/
 extern unsigned char g_f34_fd_query_base_addr;
+
+#define BASE_FWID 2400000 /* DO NOT CHANGE!!! */
+static ssize_t cei_rmi4_enable_irq_store(struct device *dev,
+                struct device_attribute *attr, const char *buf, size_t count)
+{
+        u8 i;
+        ssize_t ret;
+        struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+        if (kstrtou8(buf, 0, &i) == 0 && i <= 1) {
+                switch (i) {
+                case 0:
+                        synaptics_rmi4_irq_enable(rmi4_data, false, false);
+                        synaptics_rmi4_sleep_enable(rmi4_data, true);
+                        TP_LOGI("SMx2 disable irq\n");
+                break;
+
+                case 1:
+                        synaptics_rmi4_sleep_enable(rmi4_data, false);
+                        synaptics_rmi4_irq_enable(rmi4_data, true, false);
+                        TP_LOGI("SMx2 enable irq\n");
+                break;
+                }
+
+                ret = count;
+        } else {
+                ret = -EINVAL;
+        }
+
+        return ret;
+}
+
+
+static ssize_t cei_cmd_rmi4_tpfwver_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_rmi4_device_info *rmi;
+	int cooked_firmware_id;
+
+	rmi = &(rmi4_data->rmi4_mod_info);
+	rmi4_data->config_id = get_config_id();
+	rmi4_data->firmware_id = (unsigned int)rmi->build_id[0] +
+			(unsigned int)rmi->build_id[1] * 0x100 +
+			(unsigned int)rmi->build_id[2] * 0x10000;
+
+	cooked_firmware_id = rmi4_data->firmware_id - BASE_FWID;
+
+	/*
+	 * tpfwver
+	 *
+	 *   SSFFFFFCCCCCCCC (15 chars)
+	 *
+	 *   SS (hex) = TP source
+	 *   FFFFF (hex) = Firmware ID - 2400000
+	 *   CCCCCCCC (hex) = Config ID
+	 */
+
+	TP_LOGI("tpfwver = %02X%05X%08X\n",
+			rmi4_data->tp_source,
+			cooked_firmware_id,
+			rmi4_data->config_id);
+
+	return snprintf(buf, PAGE_SIZE, "%02X%05X%08X",
+			rmi4_data->tp_source,
+			cooked_firmware_id,
+			rmi4_data->config_id);
+}
+
+static ssize_t cei_cmd_rmi4_tpsource_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s",
+			rmi4_data->tp_source == TP_SOURCE_TRULY ? "Truly" :
+			rmi4_data->tp_source == TP_SOURCE_TM ? "TM" :
+			rmi4_data->tp_source == TP_SOURCE_INX ? "INX" : "UNKNOW");
+}
+
 static ssize_t cei_tp_bl_version_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1023,7 +1125,6 @@ static ssize_t cei_dynamic_log_store(struct device *dev,
 }
 #endif /* TP_DYNAMIC_LOG */
 
-#define BASE_FWID 2400000 /* DO NOT CHANGE!!! */
 
 static ssize_t synaptics_rmi4_tpfwver_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1102,7 +1203,7 @@ static ssize_t synaptics_rmi4_tpsource_show(struct device *dev,
 	TP_LOGI("tpsource = 0x%02X (%s)\n",
 			rmi4_data->tp_source,
 			rmi4_data->tp_source == TP_SOURCE_TRULY ? "Truly" :
-			rmi4_data->tp_source == TP_SOURCE_CSOT ? "CSOT" :
+			rmi4_data->tp_source == TP_SOURCE_TM ? "TM" :
 			rmi4_data->tp_source == TP_SOURCE_INX ? "INX" : "UNKNOW");
 
 	return sprintf(buf, "%02X\n",
@@ -4193,9 +4294,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	rmi4_data->lcd_id = gpio_get_value(56);
 
 	/* Get project id */
-	/* dean tag : for bbbu */
-	//project_id = get_cei_project_id();
-	project_id = "NONE";
+	project_id = get_cei_project_id();
 
 	/* tp_source default set to 0xFF (unknow) */
 	rmi4_data->tp_source = TP_SOURCE_UNKNOW;
@@ -4204,11 +4303,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 
 	if (strncmp(project_id, "BY1", 3) == 0) {
 		rmi4_data->project_id = 0x01;
-		if (rmi4_data->lcd_id == 1)
-			rmi4_data->tp_source = TP_SOURCE_TRULY;
-		else if (rmi4_data->lcd_id == 0)
-			rmi4_data->tp_source = TP_SOURCE_CSOT;
-
+		rmi4_data->tp_source = TP_SOURCE_TRULY;
 	} else if (strncmp(project_id, "BY2", 3) == 0) {
 		rmi4_data->project_id = 0x02;
 		rmi4_data->tp_source = TP_SOURCE_INX;
@@ -4227,7 +4322,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		rmi4_data->lcd_id,
 		rmi4_data->tp_source,
 		rmi4_data->tp_source == TP_SOURCE_TRULY ? "Truly" :
-		rmi4_data->tp_source == TP_SOURCE_CSOT ? "CSOT" :
 		rmi4_data->tp_source == TP_SOURCE_INX ? "INX" :
 		rmi4_data->tp_source == TP_SOURCE_TM ? "TM" :"UNKNOW");
 
