@@ -76,7 +76,6 @@
 
 	int_codec: sound {
 		qcom,msm-micbias1-ext-cap;
-		qcom,msm-micbias2-ext-cap = "false";
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,audio-routing =
 			"RX_BIAS", "INT_MCLK0",
@@ -304,5 +303,11 @@
 				status = "ok";
 			};
 		};
+	};
+};
+
+&usb3 {
+	dwc3@a800000 {
+		maximum-speed = "high-speed";
 	};
 };
