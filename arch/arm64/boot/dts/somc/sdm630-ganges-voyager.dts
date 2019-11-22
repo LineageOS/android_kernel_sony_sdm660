@@ -16,7 +16,7 @@
 #include "../qcom/sdm630.dtsi"
 #include "../qcom/sdm630-mtp.dtsi"
 #include "../qcom/sdm660-internal-codec.dtsi"
-#include "sdm630-ganges-pioneer.dtsi"
+#include "sdm630-ganges-voyager.dtsi"
 
 / {
 	model = "Sony Mobile Communications. Voyager(sdm630)";
@@ -28,8 +28,4 @@
 
 &int_codec {
 	qcom,model = "sdm660-snd-card-mtp";
-};
-
-&sdhc_2 {
-	cd-gpios = <&tlmm 54 0x0>;
 };

@@ -16,7 +16,7 @@
 #include "../qcom/sdm630.dtsi"
 #include "../qcom/sdm630-mtp.dtsi"
 #include "../qcom/sdm660-internal-codec.dtsi"
-#include "sdm630-ganges-discovery.dtsi"
+#include "sdm630-ganges-discovery_dsds.dtsi"
 
 / {
 	model = "Sony Mobile Communications. Discovery(sdm630)";
