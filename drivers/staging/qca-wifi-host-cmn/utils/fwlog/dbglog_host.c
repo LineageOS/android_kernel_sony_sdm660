@@ -54,11 +54,11 @@
 #include <a_debug.h>
 #define FWLOG_DEBUG   ATH_DEBUG_MAKE_MODULE_MASK(0)
 
+#ifdef WLAN_DEBUG
+
 static int get_version;
 static int gprint_limiter;
 static bool tgt_assert_enable;
-
-#ifdef WLAN_DEBUG
 
 static ATH_DEBUG_MASK_DESCRIPTION g_fwlog_debug_description[] = {
 	{FWLOG_DEBUG, "fwlog"},
@@ -1740,7 +1740,7 @@ send_diag_netlink_data(const uint8_t *buffer, uint32_t len, uint32_t cmd)
 		slot_len = sizeof(*slot) + ATH6KL_FWLOG_PAYLOAD_SIZE +
 				sizeof(radio);
 
-		skb_out = nlmsg_new(slot_len, GFP_KERNEL);
+		skb_out = nlmsg_new(slot_len, GFP_ATOMIC);
 		if (!skb_out) {
 			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
 					("Failed to allocate new skb\n"));
