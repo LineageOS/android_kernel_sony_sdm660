@@ -1225,5 +1225,6 @@ config TOUCHSCREEN_ST
 	  If unsure, say N.
 
 source "drivers/input/touchscreen/st/Kconfig"
+source "drivers/input/touchscreen/nvt_nt36672a/Kconfig"
 
 endif
