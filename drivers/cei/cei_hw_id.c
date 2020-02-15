@@ -139,12 +139,16 @@ static int cei_mb_id_read(struct seq_file *m, void *v)
 
 static int cei_fp_id_read(struct seq_file *m, void *v)
 {
+#if defined(CONFIG_MACH_SONY_KIRIN) || defined(CONFIG_MACH_SONY_KIRIN_DSDS) || defined(CONFIG_MACH_SONY_MERMAID) || defined(CONFIG_MACH_SONY_MERMAID_DSDS)
+	seq_printf(m, "%s\n", "et516");
+#else
 	if (!strncmp(ceifpname, "", strlen(ceifpname))) {
 		pr_info(KERN_INFO "CEI FPMODULE ID in invalid\n");
 		seq_printf(m, "%s\n", "NULL");
 	} else {
 		seq_printf(m, "%s\n", ceifpname);
 	}
+#endif
 
 	return 0;
 }
