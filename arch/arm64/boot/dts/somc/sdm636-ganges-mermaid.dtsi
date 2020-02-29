@@ -20,6 +20,14 @@
 &soc {
 	pinctrl@03000000 {
 		disabled-pins = <8 9 10 11>;
+
+		sdc2_clk_on: sdc2_clk_on {
+			config {
+				pins = "sdc2_clk";
+				drive-strength = <14>; /* default 16 MA */
+				bias-disable; /* NO pull */
+			};
+		};
 	};
 
        somc_pinctrl: somc_pinctrl {
