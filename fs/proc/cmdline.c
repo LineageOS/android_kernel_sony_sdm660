@@ -23,6 +23,17 @@ static const struct file_operations cmdline_proc_fops = {
 
 static int __init proc_cmdline_init(void)
 {
+	char *offset_addr = strstr(saved_command_line, "androidboot.mode=cei_charger");
+
+	if (offset_addr) {
+		/*
+		 * Remove 'androidboot.mode=cei_charger' flag from
+		 * command line so that userspace will see flag
+		 * set by sony_param_warmboot() instead.
+		 */
+		memset(offset_addr, ' ', strlen("androidboot.mode=cei_charger"));
+	}
+
 	proc_create("cmdline", 0, NULL, &cmdline_proc_fops);
 	return 0;
 }
