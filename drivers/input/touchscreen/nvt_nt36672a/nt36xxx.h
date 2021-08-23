@@ -172,6 +172,7 @@ struct nvt_ts_data {
 	const struct nvt_ts_mem_map *mmap;
 	uint8_t carrier_system;
 	uint16_t nvt_pid;
+	uint8_t *xbuf;
 /*---For SMx3 use start---*/
 	struct kobject *touchscreen_link;
 	uint8_t mb_hw_id;
