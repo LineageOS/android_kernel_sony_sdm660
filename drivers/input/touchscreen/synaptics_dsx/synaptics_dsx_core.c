@@ -87,9 +87,11 @@ enum subsystem {
 #define F12_DATA_15_WORKAROUND
 
 #define IGNORE_FN_INIT_FAILURE
+#ifndef CONFIG_ARCH_SONY_GANGES
 #define FB_READY_RESET
 #define FB_READY_WAIT_MS 100
 #define FB_READY_TIMEOUT_S 30
+#endif
 #ifdef SYNA_TDDI
 #define TDDI_LPWG_WAIT_US 10
 #endif
