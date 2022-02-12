@@ -874,9 +874,9 @@ static void send_file_work(struct work_struct *data)
 			/* prepend MTP data header */
 			header = (struct mtp_data_header *)req->buf;
 			/*
-                         * set file size with header according to
-                         * MTP Specification v1.0
-                         */
+			 * set file size with header according to
+			 * MTP Specification v1.0
+			 */
 			header->length = (count > MTP_MAX_FILE_SIZE) ?
 				MTP_MAX_FILE_SIZE : __cpu_to_le32(count);
 			header->type = __cpu_to_le16(2); /* data packet */
@@ -1889,6 +1889,10 @@ static int mtp_ctrlreq_configfs(struct usb_function *f,
 static void mtp_free(struct usb_function *f)
 {
 	/*NO-OP: no function specific resource allocation in mtp_alloc*/
+	struct mtp_instance *fi_mtp;
+
+	fi_mtp = container_of(f->fi, struct mtp_instance, func_inst);
+	fi_mtp->func_inst.f = NULL;
 }
 
 struct usb_function *function_alloc_mtp_ptp(struct usb_function_instance *fi,
