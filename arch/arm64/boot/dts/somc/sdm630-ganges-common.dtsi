@@ -291,6 +291,13 @@
 	};
 };
 
+&firmware {
+	android {
+		boot_devices = "soc/c0c4000.sdhci";
+		/delete-node/ fstab;
+	};
+};
+
 &usb3 {
 	dwc3@a800000 {
 		maximum-speed = "high-speed";
