@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc409548_33954e64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32976
+      },
+      "writtenOn": "2023-09-13T20:40:01Z",
+      "side": 1,
+      "message": "Tested and working with LOS 19.1 and 20.",
+      "revId": "0e24cad935dd2bf5a4b52ed6f93d972e5453b60e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
