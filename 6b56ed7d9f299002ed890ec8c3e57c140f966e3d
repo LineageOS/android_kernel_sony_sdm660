@@ -69,6 +69,24 @@
       "parentUuid": "c1878b27_37224de0",
       "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9705f05b_72b5edab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32976
+      },
+      "writtenOn": "2023-09-16T14:16:52Z",
+      "side": 1,
+      "message": "I have now a compiling kernel on LineageOS 20. But it doesn\u0027t compile anymore on 19.1. Do we merge this on a new branch or do I need to fix it for 19.1 ? Thanks.",
+      "parentUuid": "97d709f8_6389bbf1",
+      "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
