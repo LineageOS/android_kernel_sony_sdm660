@@ -16,6 +16,23 @@
       "message": "A first set of backports to prepare for LOS 20/clang-14\nThank you for your time.",
       "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f6ef286_03fe9c02",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2023-09-16T08:42:12Z",
+      "side": 1,
+      "message": "can you just do a proper port of https://review.lineageos.org/q/topic:%2213-qcom_msm8998%22?",
+      "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
