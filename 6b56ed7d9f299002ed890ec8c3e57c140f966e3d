@@ -105,6 +105,24 @@
       "parentUuid": "9705f05b_72b5edab",
       "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "751af2d1_076260a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32976
+      },
+      "writtenOn": "2023-09-16T21:36:29Z",
+      "side": 1,
+      "message": "I believe the whole chain is now ported. Still correctly compiling with LineageOS 20. I confirm that it doesn\u0027t compile anymore on 19.1.",
+      "parentUuid": "23024a77_8081c2fb",
+      "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
