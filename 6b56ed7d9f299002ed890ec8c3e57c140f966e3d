@@ -159,6 +159,24 @@
       "parentUuid": "c0a7a012_8b1207cd",
       "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2dbf2c43_d2e8dafd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 32976
+      },
+      "writtenOn": "2023-09-17T13:02:44Z",
+      "side": 1,
+      "message": "123 commits done. LineageOS 20 only.",
+      "parentUuid": "5c6b6763_1232d06e",
+      "revId": "6b56ed7d9f299002ed890ec8c3e57c140f966e3d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
