@@ -1059,7 +1059,6 @@ static int smb2_init_dc_psy(struct smb2 *chip)
 
 static enum power_supply_property smb2_batt_props[] = {
 #if defined(CONFIG_SOMC_CHARGER_EXTENSION)
-	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_SKIN_TEMP,
 #endif
 	POWER_SUPPLY_PROP_INPUT_SUSPEND,
@@ -1129,11 +1128,6 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 		rc = smblib_get_prop_batt_present(chg, val);
 		break;
-#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		rc = smblib_get_prop_charging_enabled(chg, val);
-		break;
-#endif
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_get_prop_input_suspend(chg, val);
 		break;
@@ -1300,11 +1294,6 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 	struct smb_charger *chg = power_supply_get_drvdata(psy);
 
 	switch (prop) {
-#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		rc = smblib_set_prop_charging_enabled(chg, val);
-		break;
-#endif
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_set_prop_input_suspend(chg, val);
 		break;
@@ -1449,9 +1438,6 @@ static int smb2_batt_prop_is_writeable(struct power_supply *psy,
 		enum power_supply_property psp)
 {
 	switch (psp) {
-#if defined(CONFIG_SOMC_CHARGER_EXTENSION)
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-#endif
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 	case POWER_SUPPLY_PROP_CAPACITY:
