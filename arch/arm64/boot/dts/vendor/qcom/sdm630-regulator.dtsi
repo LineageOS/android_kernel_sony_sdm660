@@ -141,8 +141,13 @@
 	rpm-regulator-ldoa1 {
 		status = "okay";
 		pm660_l1: regulator-l1 {
+			qcom,regulator-type = <0>;  /* LDO */
+			qcom,init-enable = <0>;
+			qcom,init-ldo-mode = <1>;
+			qcom,init-pin-ctrl-enable = <0>;
 			regulator-min-microvolt = <1150000>;
 			regulator-max-microvolt = <1250000>;
+			qcom,init-voltage = <3300000>;
 			status = "okay";
 		};
 	};
