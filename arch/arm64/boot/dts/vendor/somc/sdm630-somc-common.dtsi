@@ -1,0 +1,57 @@
+#include "../qcom/sdm630.dtsi"
+#include "../qcom/sdm630-mtp.dtsi"
+#include "somc-pinctrl.dtsi"
+
+/ {
+    reserved-memory {
+        debug_region: debug_region@ffb00000 {
+            compatible = "removed-dma-pool", "qcom,debug_memory";
+            no-map;
+            reg = <0 0xffb00000 0 0x100000>;
+            label = "debug_mem";
+        };
+
+        pstore_reserve_mem: pstore_reserve_mem_region_region@ffc00000 {
+            compatible = "removed-dma-pool";
+            no-map;
+            reg = <0 0xffc00000 0 0x00100000>;
+        };
+    };
+};
+
+&soc {
+    ramoops {
+        compatible = "ramoops";
+        memory-region = <&pstore_reserve_mem>;
+        record-size = <0x0 0x1000>;
+        console-size = <0x0 0x40000>;
+        ftrace-size = <0x0 0x0>;
+        pmsg-size = <0x0 0x0>;
+        ecc-size = <0x0 0x0>;
+    };
+
+    /delete-node/ qcom,qbt1000;
+
+    egistec {
+        compatible = "etspi,et510";
+        spi-max-frequency = <1000000>;
+        et512_vcc-supply = <&pm660l_l6>;
+        input-device-name = "et510";
+        interrupt-parent = <&tlmm>;
+        interrupts = <72 0x0>;
+        egis,reset-gpio = <&tlmm 20 0>;
+        egis,irq-gpio = <&tlmm 72 0>;
+    };
+};
+
+&wdog {
+    qcom,bark-time = <12000>;
+};
+
+&pm660_l1 {
+    qcom,regulator-type = <0>;  /* LDO */
+    qcom,init-enable = <0>;
+    qcom,init-ldo-mode = <1>;
+    qcom,init-pin-ctrl-enable = <0>;
+    qcom,init-voltage = <3300000>;
+};
