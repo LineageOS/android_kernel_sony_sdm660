@@ -1,0 +1,41 @@
+&tlmm {
+    msm_gpio_20: msm_gpio_20 {
+        mux {
+            pins = "gpio20";
+            function = "gpio";
+        };
+        config {
+            pins = "gpio20";
+            drive-strength = <2>;
+            bias-disable;
+            output-low;
+        };
+    };
+
+    msm_gpio_20_output_high: msm_gpio_20_output_high {
+        mux {
+            pins = "gpio20";
+            function = "gpio";
+        };
+        config {
+            pins = "gpio20";
+            drive-strength = <2>;
+            bias-disable;
+            output-high;
+        };
+    };
+
+    msm_gpio_72: msm_gpio_72 {
+        mux {
+            pins = "gpio72";
+            function = "gpio";
+        };
+        config {
+            pins = "gpio72";
+            drive-strength = <2>;
+            bias-pull-down;
+        };
+    };
+
+    /delete-node/ ts_mux;
+};
