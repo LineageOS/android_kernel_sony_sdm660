@@ -15,7 +15,7 @@
 
 #include "sdm630-somc-common.dtsi"
 #include "../qcom/sdm660-internal-codec.dtsi"
-#include "sdm630-ganges-voyager_dsds.dtsi"
+#include "sdm630-ganges-voyager.dtsi"
 
 / {
 	model = "Sony Mobile Communications. Voyager(sdm630)";
