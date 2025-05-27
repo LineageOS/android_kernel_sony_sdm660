@@ -15,7 +15,7 @@
 
 #include "sdm630-somc-common.dtsi"
 #include "../qcom/sdm660-internal-codec.dtsi"
-#include "sdm630-ganges-kirin_dsds.dtsi"
+#include "sdm630-ganges-kirin.dtsi"
 
 / {
 	model = "Sony Mobile Communications. kirin(sdm630)";

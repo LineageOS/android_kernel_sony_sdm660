@@ -15,7 +15,7 @@
 
 #include "sdm636-somc-common.dtsi"
 #include "../qcom/sdm660-internal-codec.dtsi"
-#include "sdm636-ganges-mermaid_dsds.dtsi"
+#include "sdm636-ganges-mermaid.dtsi"
 
 / {
 	model = "Sony Mobile Communications. mermaid(sdm636)";
