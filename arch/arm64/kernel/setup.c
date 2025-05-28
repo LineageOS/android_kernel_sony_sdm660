@@ -349,6 +349,20 @@ static int __init androidboot_mode(char *p)
 }
 early_param("androidboot.mode", androidboot_mode);
 
+static int __init oemandroidboot_xboot(char *p)
+{
+	const char *from = "androidboot.bootloader=xboot oemandroidboot.xboot=";
+	const char *to   = "                           androidboot.bootloader=";
+
+	char *offset_addr = strstr(boot_command_line, from);
+
+	if (offset_addr)
+		memcpy(offset_addr, to, strlen(to));
+
+	return 0;
+}
+early_param("oemandroidboot.xboot", oemandroidboot_xboot);
+
 void __init setup_arch(char **cmdline_p)
 {
 	pr_info("Boot CPU: AArch64 Processor [%08x]\n", read_cpuid_id());
