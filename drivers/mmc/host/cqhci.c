@@ -305,7 +305,11 @@ static void __cqhci_enable(struct cqhci_host *cq_host)
 	cqhci_writel(cq_host, cq_host->rca, CQHCI_SSC2);
 
 	/* send QSR at lesser intervals than the default */
-	cqhci_writel(cq_host, SEND_QSR_INTERVAL, CQHCI_SSC1);
+	if ((mmc->card->cid.oemid == 0x14E) && (mmc->card->cid.manfid == 0x13)) {
+		cqhci_writel(cq_host, SEND_QSR_INTERVAL_MICRON, CQHCI_SSC1);
+	} else {
+		cqhci_writel(cq_host, SEND_QSR_INTERVAL, CQHCI_SSC1);
+	}
 
 	cqhci_set_irqs(cq_host, 0);
 
