@@ -157,6 +157,10 @@
 			0x9f 0x1c
 			0x00 0x18>;
 	};
+
+	restart@10ac000 {
+		qcom,force-warm-reboot;
+	};
 };
 
 &pm660l_wled {
