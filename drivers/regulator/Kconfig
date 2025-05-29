@@ -1177,5 +1177,10 @@ config REGULATOR_PM8008
 	  This driver controls PM8008 PMIC chip and the voltage
 	  regulators found in Qualcomm Technologies Inc. PM8008
 	  PMIC.
+
+config SOMC_LCD_OCP_ENABLED
+	bool "enable SoMC LCD OCP function"
+	help
+	  Select this to enable SoMC LCD Over current protection function.
 endif
 
