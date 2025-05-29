@@ -814,6 +814,10 @@ int fg_dump_regs(struct fg_dev *fg)
 	return 0;
 }
 
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION) && \
+	defined(CONFIG_QPNP_FG_GEN3)
+#define SOC_READABLE_WAIT_MS		400
+#endif
 int fg_restart(struct fg_dev *fg, int wait_time_ms)
 {
 	union power_supply_propval pval = {0, };
@@ -859,6 +863,13 @@ wait:
 			BATT_SOC_RESTART(fg), rc);
 		goto out;
 	}
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION) && \
+	defined(CONFIG_QPNP_FG_GEN3)
+	msleep(SOC_READABLE_WAIT_MS);
+	fg_dbg(fg, FG_SOMC, "fg restart has been completed\n");
+#elif defined(CONFIG_SOMC_CHARGER_EXTENSION)
+	fg->soc_restart_counter++;
+#endif
 out:
 	fg->fg_restarting = false;
 	return rc;
@@ -895,9 +906,54 @@ int fg_get_msoc_raw(struct fg_dev *fg, int *val)
 	return 0;
 }
 
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION) && \
+	!defined(CONFIG_QPNP_FG_GEN3)
+static int fg_get_msoc_from_sram(struct fg_dev *fg, int *msoc)
+{
+	int rc;
+	int msoc_raw;
+	int a, b;
+
+	rc = fg_get_sram_prop(fg, FG_SRAM_MONOTONIC_SOC, &msoc_raw);
+	if (rc < 0) {
+		pr_err("failed to get MSOC, rc=%d\n", rc);
+		return rc;
+	}
+
+	a = fg->msoc_tune_a;
+	b = fg->msoc_tune_b;
+	if (msoc_raw <= b) {
+		if  (msoc_raw >= a) {
+			a = b - a;
+			msoc_raw += a - fg->msoc_tune_a;
+		}
+		*msoc = DIV_ROUND_CLOSEST(msoc_raw * 50, a);
+
+		if (*msoc < 0)
+			*msoc = 0;
+
+		if (*msoc > 100)
+			*msoc = 100;
+	} else {
+		*msoc = 100;
+	}
+
+	return 0;
+}
+
+#endif
 int fg_get_msoc(struct fg_dev *fg, int *msoc)
 {
 	int rc;
+
+#if defined(CONFIG_SOMC_CHARGER_EXTENSION) && \
+	!defined(CONFIG_QPNP_FG_GEN3)
+	rc = fg_get_msoc_from_sram(fg, msoc);
+	if (rc < 0)
+		pr_err("failed to read msoc on sram %d\n", rc);
+	else
+		return 0;
+#endif
 
 	rc = fg_get_msoc_raw(fg, msoc);
 	if (rc < 0)
