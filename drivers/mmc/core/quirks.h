@@ -82,6 +82,12 @@ static const struct mmc_fixup mmc_blk_fixups[] = {
 	MMC_FIXUP(CID_NAME_ANY, CID_MANFID_HYNIX, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_LONG_READ_TIME),
 
+    /*
+     * Micron eMMC cards need a workaround for broken clock gating.
+     */
+    MMC_FIXUP(CID_NAME_ANY, CID_MANFID_MICRON, CID_OEMID_ANY, add_quirk_mmc,
+        MMC_QUIRK_BROKEN_CLK_GATING),
+
 	/*
 	 * On these Samsung MoviNAND parts, performing secure erase or
 	 * secure trim can result in unrecoverable corruption due to a
