@@ -108,6 +108,11 @@
  */
 #define SEND_QSR_INTERVAL 0x70001
 
+/*
+ * Micron eMMC cards require QSR to be sent at shorter intervals than the default.
+ */
+#define SEND_QSR_INTERVAL_MICRON 0x70028
+
 /* response for dcmd */
 #define CQHCI_CRDCT			0x48
 
