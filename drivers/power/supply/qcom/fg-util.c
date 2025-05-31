@@ -715,7 +715,21 @@ static inline bool is_sec_access(struct fg_dev *fg, int addr)
 	if (fg->version != GEN3_FG)
 		return false;
 
+
+#if defined(CONFIG_MACH_SONY_KIRIN) || \
+	defined(CONFIG_MACH_SONY_KIRIN_DSDS) || \
+	defined(CONFIG_MACH_SONY_MERMAID) || \
+	defined(CONFIG_MACH_SONY_MERMAID_DSDS) || \
+	defined(CONFIG_MACH_SONY_PIONEER) || \
+	defined(CONFIG_MACH_SONY_PIONEER_DSDS) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY) || \
+	defined(CONFIG_MACH_SONY_DISCOVERY_DSDS) || \
+	defined(CONFIG_MACH_SONY_VOYAGER) || \
+	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
+	return ((addr & 0x00FF) > 0xD0);
+#else
 	return ((addr & 0x00FF) > 0xB8);
+#endif
 }
 
 int fg_write(struct fg_dev *fg, int addr, u8 *val, int len)
