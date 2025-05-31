@@ -16,7 +16,6 @@
 #include <asm/segment.h>
 #include <asm/uaccess.h>
 #include <linux/buffer_head.h>
-#include <linux/wakelock.h>
 #include <linux/slab.h>
 #include <linux/power_supply.h>
 #include <linux/alarmtimer.h>
@@ -43,11 +42,11 @@ static struct alarm alarm;
 static bool alarm_inited = false;
 static int alarm_value = 0;
 
-static struct wake_lock wakelock;
+static struct wakeup_source *wakelock;
 static bool wakelock_inited = false;
 static bool wakelock_held = false;
 
-static struct wake_lock charge_wakelock;
+static struct wakeup_source *charge_wakelock;
 static bool charge_wakelock_inited = false;
 static bool charge_wakelock_held = false;
 
@@ -349,10 +348,37 @@ static struct class_attribute qns_attrs[] = {
 	__ATTR_NULL,
 };
 
+
+static struct attribute *qns_class_attr_list[] = {
+    /* Take each element of qns_attrs[] and grab its `attr` member: */
+    &qns_attrs[0].attr,   /* charging_state */
+    &qns_attrs[1].attr,   /* current_now */
+    &qns_attrs[2].attr,   /* voltage */
+    &qns_attrs[3].attr,   /* temp */
+    &qns_attrs[4].attr,   /* fcc */
+    &qns_attrs[5].attr,   /* design */
+    &qns_attrs[6].attr,   /* soc */
+    /* index 7 is battery_type (under DEBUG or non‐DEBUG) */
+    &qns_attrs[7].attr,   /* battery_type */
+    &qns_attrs[8].attr,   /* charge_current */
+    &qns_attrs[9].attr,   /* charge_voltage */
+    &qns_attrs[10].attr,  /* alarm */
+    &qns_attrs[11].attr,  /* options */
+    NULL                  /* terminate */
+};
+
+static const struct attribute_group qns_class_group = {
+    .attrs = qns_class_attr_list,
+};
+static const struct attribute_group *qns_class_groups[] = {
+    &qns_class_group,
+    NULL
+};
+
 static enum alarmtimer_restart qns_alarm_handler(struct alarm * alarm, ktime_t now)
 {
 	pr_info("QNS: ALARM! System wakeup!");
-	wake_lock(&wakelock);
+	__pm_stay_awake(wakelock);
 	wakelock_held = true;
 	alarm_value = 1;
 	return ALARMTIMER_NORESTART;
@@ -465,13 +491,13 @@ static ssize_t qns_param_store(struct class *dev,
 		
 		if(!wakelock_inited)
 		{
-			wake_lock_init(&wakelock, WAKE_LOCK_SUSPEND, "QnovoQNS");
+			wakelock = wakeup_source_register(NULL, "QnovoQNS");
 			wakelock_inited = true;
 		}
 
 		if(!charge_wakelock_inited)
 		{
-			wake_lock_init(&charge_wakelock, WAKE_LOCK_SUSPEND, "QnovoQNS");
+			charge_wakelock = wakeup_source_register(NULL, "QnovoQNS");
 			charge_wakelock_inited = true;
 		}
 
@@ -483,7 +509,7 @@ static ssize_t qns_param_store(struct class *dev,
 				{
 					pr_info("QNS: Alarm: acquiring charge_wakelock via CHARGE_WAKELOCK");
 
-					wake_lock(&charge_wakelock);
+					__pm_stay_awake(charge_wakelock);
 					charge_wakelock_held = true;
 				}
 			}
@@ -493,7 +519,7 @@ static ssize_t qns_param_store(struct class *dev,
 				{
 					pr_info("QNS: Alarm: releasing charge_wakelock via CHARGE_WAKELOCK_RELEASE");
 					
-					wake_unlock(&charge_wakelock);
+					__pm_relax(charge_wakelock);
 					charge_wakelock_held = false;
 				}
 			}
@@ -502,7 +528,7 @@ static ssize_t qns_param_store(struct class *dev,
 				if(wakelock_held)
 				{
 					pr_info("QNS: Alarm: releasing wakelock via HANDLED");
-					wake_unlock(&wakelock);
+					__pm_relax(wakelock);
 				}
 				alarm_value = 0;
 				wakelock_held = false;
@@ -517,7 +543,7 @@ static ssize_t qns_param_store(struct class *dev,
 				if(wakelock_held)
 				{
 					pr_info("QNS: Alarm: releasing wakelock via CANCEL");
-					wake_unlock(&wakelock);
+					__pm_relax(wakelock);
 				}
 				wakelock_held = false;
 			}
@@ -527,7 +553,7 @@ static ssize_t qns_param_store(struct class *dev,
 				{
 					pr_info("QNS: Alarm: acquiring wakelock via IMMEDIATE");
 
-					wake_lock(&wakelock);
+					__pm_stay_awake(wakelock);
 					wakelock_held = true;
 				}
 			}
@@ -546,7 +572,7 @@ static ssize_t qns_param_store(struct class *dev,
 				{
 					pr_info("QNS: Alarm: releasing wakelock via alarm>0");
 					
-					wake_unlock(&wakelock);
+					__pm_relax(wakelock);
 				}
 				alarm_value = 0;
 				wakelock_held = false;
@@ -579,7 +605,7 @@ static struct class qns_class =
 {
 	.name = "qns",
 	.owner = THIS_MODULE,
-	.class_attrs = qns_attrs
+	.class_groups = qns_class_groups
 };
 
 MODULE_AUTHOR("Miro Zmrzli <miro@qnovocorp.com>");
