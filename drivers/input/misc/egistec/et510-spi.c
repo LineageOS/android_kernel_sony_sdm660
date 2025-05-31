@@ -58,10 +58,10 @@
 #include <soc/qcom/scm.h>
 #include <linux/cei_hw_id.h>
 
-#include <linux/wakelock.h>
+#include <linux/pm_wakeup.h>
 #include "et510.h"
 
-struct wake_lock et510_wake_lock;
+struct wakeup_source *et510_wake_lock;
 
 #define FP_SPI_DEBUG
 #define EDGE_TRIGGER_FALLING    0x0
@@ -156,7 +156,7 @@ static irqreturn_t fp_eint_func(int irq, void *dev_id)
 		mod_timer(&fps_ints.timer,jiffies + msecs_to_jiffies(fps_ints.detect_period));
 	fps_ints.int_count++;
 	DEBUG_PRINT("[ETS] fp_eint_func, fps_ints.int_count=%d",fps_ints.int_count);
-  	wake_lock_timeout(&et510_wake_lock, msecs_to_jiffies(1500));
+	__pm_wakeup_event(et510_wake_lock, msecs_to_jiffies(1500));
 	return IRQ_HANDLED;
 }
 
@@ -170,7 +170,7 @@ static irqreturn_t fp_eint_func_ll(int irq , void *dev_id)
 	
 	wake_up_interruptible(&interrupt_waitq);
 	//fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
-  	wake_lock_timeout(&et510_wake_lock, msecs_to_jiffies(1500));
+	__pm_wakeup_event(et510_wake_lock, msecs_to_jiffies(1500));
 	return IRQ_RETVAL(IRQ_HANDLED);
 }
 
@@ -834,7 +834,7 @@ static int etspi_remove(struct platform_device *pdev)
 	del_timer_sync(&fps_ints.timer);
 	request_irq_done = 0;
 	t_mode = 255;
-	wake_lock_destroy(&et510_wake_lock);
+	wakeup_source_unregister(et510_wake_lock);
     return 0;
 }
 
@@ -997,7 +997,7 @@ static int etspi_probe(struct platform_device *pdev)
 				(unsigned long)&fps_ints);
 	add_timer(&fps_ints.timer);
 
-	wake_lock_init(&et510_wake_lock, WAKE_LOCK_SUSPEND, "et510_wake_lock");
+	et510_wake_lock = wakeup_source_register(NULL, "et510_wake_lock");
 
 	DEBUG_PRINT("  add_timer ---- \n");
 	DEBUG_PRINT("%s : initialize success %d\n",
