@@ -59,6 +59,7 @@
 #include <linux/cei_hw_id.h>
 
 #include <linux/pm_wakeup.h>
+#include <linux/timer.h>
 #include "et510.h"
 
 struct wakeup_source *et510_wake_lock;
@@ -133,9 +134,9 @@ static DECLARE_WAIT_QUEUE_HEAD(interrupt_waitq);
  *		Function Return
  */
 
-void interrupt_timer_routine(unsigned long _data)
+static void interrupt_timer_routine(struct timer_list *t)
 {
-	struct interrupt_desc *bdata = (struct interrupt_desc *)_data;
+	struct interrupt_desc *bdata = from_timer(bdata, t, timer);
 
 	DEBUG_PRINT("FPS interrupt count = %d", bdata->int_count);
 	if (bdata->int_count >= bdata->detect_threshold) {
@@ -993,8 +994,7 @@ static int etspi_probe(struct platform_device *pdev)
 	fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
 
 	/* the timer is for ET310 */
-	setup_timer(&fps_ints.timer, interrupt_timer_routine,
-				(unsigned long)&fps_ints);
+	timer_setup(&fps_ints.timer, interrupt_timer_routine, 0);
 	add_timer(&fps_ints.timer);
 
 	et510_wake_lock = wakeup_source_register(NULL, "et510_wake_lock");
