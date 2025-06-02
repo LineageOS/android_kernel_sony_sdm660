@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&vendor {
 	voyager_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <17>;
 		#include "fg-gen3-batterydata-voyager-send-4350mv.dtsi"
