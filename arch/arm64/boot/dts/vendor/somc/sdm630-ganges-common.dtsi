@@ -164,8 +164,8 @@
 };
 
 &pm660l_wled {
-	qcom,fs-curr-ua = <20000>;
-	qcom,led-strings-list = [00 01];
+	qcom,fs-current-limit = <20000>;
+	qcom,string-cfg = <5>;
 	somc,init-br-ua = <10000>;
 	somc-s1,br-power-save-ua = <800>;
 	somc,bl-scale-enabled;
@@ -232,42 +232,6 @@
 			qcom,rgb_sync = <1>;
 		};
 	};
-};
-
-&red_led {
-	somc,pwm-channel = <2>;
-	linux,name = "red";
-	linux,default-trigger = "none";
-	somc,color_variation_max_num = <4>;
-	somc,max_current = <
-		45 511 511
-		46 511 511
-		47 511 511
-		48 511 511>;
-};
-
-&green_led {
-	somc,pwm-channel = <1>;
-	linux,name = "green";
-	linux,default-trigger = "none";
-	somc,color_variation_max_num = <4>;
-	somc,max_current = <
-		45 511 511
-		46 511 511
-		47 511 511
-		48 511 511>;
-};
-
-&blue_led {
-	somc,pwm-channel = <0>;
-	linux,name = "blue";
-	linux,default-trigger = "none";
-	somc,color_variation_max_num = <4>;
-	somc,max_current = <
-		45 511 511
-		46 511 511
-		47 511 511
-		48 511 511>;
 };
 
 &mdss_dsi0 {
