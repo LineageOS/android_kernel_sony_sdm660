@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&vendor {
 	pioneer_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <17>;
 		#include "fg-gen3-batterydata-pioneer-send-4380mv.dtsi"
