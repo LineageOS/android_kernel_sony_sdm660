@@ -4994,6 +4994,7 @@ static int fastrpc_cb_probe(struct device *dev)
 	int err = 0, cid = -1, i = 0;
 	u32 sharedcb_count = 0, j = 0;
 	uint32_t dma_addr_pool[2] = {0, 0};
+	struct dentry *dbgfs_gbl_exists;
 
 	VERIFY(err, NULL != (name = of_get_property(dev->of_node,
 					 "label", NULL)));
@@ -5065,12 +5066,18 @@ static int fastrpc_cb_probe(struct device *dev)
 
 	chan->sesscount++;
 	if (debugfs_root) {
-		debugfs_global_file = debugfs_create_file("global", 0644,
-			debugfs_root, NULL, &debugfs_fops);
-		if (IS_ERR_OR_NULL(debugfs_global_file)) {
-			pr_warn("Error: %s: %s: failed to create debugfs global file\n",
+		/* Check if global file already exists */
+		dbgfs_gbl_exists = debugfs_lookup("global", debugfs_root);
+		if (!dbgfs_gbl_exists) {
+			debugfs_global_file = debugfs_create_file("global",
+				 0644, debugfs_root, NULL, &debugfs_fops);
+			if (IS_ERR_OR_NULL(debugfs_global_file)) {
+				pr_warn("Error: %s: %s: failed to create debugfs global file\n",
 				current->comm, __func__);
-			debugfs_global_file = NULL;
+				debugfs_global_file = NULL;
+			}
+		} else {
+			dput(dbgfs_gbl_exists);
 		}
 	}
 bail:
