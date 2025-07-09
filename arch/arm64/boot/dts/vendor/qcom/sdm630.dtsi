@@ -291,17 +291,23 @@
 		#size-cells = <2>;
 		ranges;
 
+		ramoops: ramoops@ffc00000 {
+			compatible = "removed-dma-pool", "ramoops";
+			no-map;
+			reg = <0 0xffc00000 0 0x00100000>;
+			record-size = <0x1000>;
+			console-size = <0x40000>;
+			ftrace-size = <0x0>;
+			pmsg-size = <0x0>;
+			ecc-size = <0x0>;
+			status = "ok";
+		};
+
 		debug_region: debug_region@ffb00000 {
 			compatible = "removed-dma-pool", "qcom,debug_memory";
 			no-map;
 			reg = <0 0xffb00000 0 0x100000>;
 			label = "debug_mem";
-		};
-
-		pstore_reserve_mem: pstore_reserve_mem_region_region@ffc00000 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0 0xffc00000 0 0x00100000>;
 		};
 
 		wlan_msa_guard: wlan_msa_guard@85600000 {
@@ -468,16 +474,6 @@
 		#redistributor-regions = <1>;
 		redistributor-stride = <0x0 0x20000>;
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
-	};
-
-	ramoops {
-		compatible = "ramoops";
-		memory-region = <&pstore_reserve_mem>;
-		record-size = <0x0 0x1000>;
-		console-size = <0x0 0x40000>;
-		ftrace-size = <0x0 0x0>;
-		pmsg-size = <0x0 0x0>;
-		ecc-size = <0x0 0x0>;
 	};
 
 	timer {
