@@ -1432,11 +1432,11 @@ static int32_t smx3_selftest_init(struct device_node *np, bool _isPreTest)
 			 *     mpcriteria = "novatek-mp-criteria-500A"
 			 */
 			if (ts->nvt_pid == 0x0108 || ts->nvt_pid == 0x1114)
-				snprintf(mpcriteria, PAGE_SIZE,
+				snprintf(mpcriteria, sizeof(mpcriteria),
 					"novatek-mp-criteria-%04X",
 					ts->nvt_pid);
 			else
-				snprintf(mpcriteria, PAGE_SIZE,
+				snprintf(mpcriteria, sizeof(mpcriteria),
 					"novatek-mp-criteria-default");
 
 			if (!nvt_mp_parse_dt(np, mpcriteria)) {
