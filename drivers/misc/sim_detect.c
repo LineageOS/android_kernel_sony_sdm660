@@ -22,7 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm.h>
 #include <linux/slab.h>
-#include <linux/switch.h>
+#include <linux/extcon-provider.h>
 #include <linux/sysfs.h>
 #include <linux/types.h>
 #include "sim_detect.h"
@@ -40,7 +40,7 @@ struct sim_detect_event_data {
 struct sim_detect_drvdata {
 	struct device *dev;
 	struct pinctrl *key_pinctrl;
-	struct switch_dev sim_detect;
+	struct extcon_dev *edev;
 	struct mutex lock;
 	atomic_t detection_in_progress;
 	unsigned int n_events;
@@ -53,10 +53,10 @@ enum sim_detect_switch_state {
 	SWITCH_ON,
 };
 
-enum sim_report_state {
-	NOTHING_HAPPENED = 0,
-	SIM_REMOVED = 1,
-	SIM_INSERTED = 2,
+/* Define extcon cable types */
+static const unsigned int sim_extcon_cable[] = {
+	EXTCON_MECHANICAL,
+	EXTCON_NONE,
 };
 
 static int sim_detect_gpio_read(struct sim_detect_drvdata *ddata)
@@ -75,7 +75,7 @@ static int sim_detect_gpio_read(struct sim_detect_drvdata *ddata)
 static void sim_detect_report_switch_event(struct sim_detect_drvdata *ddata)
 {
 	int new_state = 0;
-	int report_state = NOTHING_HAPPENED;
+	bool sim_present;
 
 	mutex_lock(&ddata->lock);
 
@@ -86,13 +86,12 @@ static void sim_detect_report_switch_event(struct sim_detect_drvdata *ddata)
 	if (new_state == ddata->current_state)
 		goto skip_report;
 
-	if (new_state < ddata->current_state)
-		report_state = SIM_REMOVED;
-	else if (new_state > ddata->current_state)
-		report_state = SIM_INSERTED;
+	sim_present = new_state > ddata->current_state;
 
-	dev_info(ddata->dev, "%s: report (%d)\n", __func__, report_state);
-	switch_set_state(&ddata->sim_detect, report_state);
+	dev_info(ddata->dev, "%s: SIM %s\n", __func__,
+		 sim_present ? "inserted" : "removed");
+
+	extcon_set_state_sync(ddata->edev, EXTCON_MECHANICAL, sim_present);
 	ddata->current_state = new_state;
 
 skip_report:
@@ -130,6 +129,7 @@ static int sim_detect_get_devtree(struct device *dev,
 		goto fail;
 	}
 
+	pp = NULL;
 	while ((pp = of_get_next_child(node, pp))) {
 
 		if (!of_find_property(pp, "gpios", NULL)) {
@@ -183,10 +183,10 @@ static irqreturn_t sim_detect_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void sim_detect_det_tmr_func(unsigned long func_data)
+static void sim_detect_det_tmr_func(struct timer_list *t)
 {
 	struct sim_detect_event_data *edata =
-		(struct sim_detect_event_data *)func_data;
+		from_timer(edata, t, det_timer);
 
 	schedule_work(&edata->det_work);
 }
@@ -257,17 +257,19 @@ static int sim_detect_setup_event(struct platform_device *pdev,
 
 	edata->event = event;
 
-	error = gpio_request(event->gpio, desc);
-	if (error < 0)
+	error = devm_gpio_request(dev, event->gpio, desc);
+	if (error < 0) {
 		dev_warn(dev, "Failed to request GPIO %d, error %d\n",
 			event->gpio, error);
+		return error;
+	}
 
 	error = gpio_direction_input(event->gpio);
 	if (error < 0) {
 		dev_err(dev,
 			"Failed to configure direction for GPIO %d, error %d\n",
 			event->gpio, error);
-		goto fail;
+		return error;
 	}
 
 	edata->timer_debounce = event->debounce_interval;
@@ -278,7 +280,7 @@ static int sim_detect_setup_event(struct platform_device *pdev,
 		dev_err(dev,
 			"Unable to get irq number for GPIO %d, error %d\n",
 			event->gpio, error);
-		goto fail;
+		return error;
 	}
 	edata->irq = irq;
 
@@ -290,58 +292,44 @@ static int sim_detect_setup_event(struct platform_device *pdev,
 
 	INIT_WORK(&edata->det_work, sim_detect_det_work);
 
-	setup_timer(&edata->det_timer,
-		    sim_detect_det_tmr_func, (unsigned long)edata);
+	timer_setup(&edata->det_timer, sim_detect_det_tmr_func, 0);
 
-	error = request_any_context_irq(edata->irq, isr, irqflags, desc, edata);
+	error = devm_request_any_context_irq(dev, edata->irq, isr, irqflags,
+					     desc, edata);
 	if (error < 0) {
 		dev_err(dev, "Unable to claim irq %d; error %d\n",
-			event->irq, error);
-		goto fail;
+			edata->irq, error);
+		return error;
 	}
 	enable_irq_wake(edata->irq);
 
 	return 0;
-
-fail:
-	gpio_free(event->gpio);
-	return error;
 }
 
 static void sim_detect_remove_event(struct sim_detect_event_data *edata)
 {
-	free_irq(edata->irq, edata);
 	if (edata->timer_debounce)
 		del_timer_sync(&edata->det_timer);
 	cancel_work_sync(&edata->det_work);
-	if (gpio_is_valid(edata->event->gpio))
-		gpio_free(edata->event->gpio);
 }
 
-static int sim_detect_set_switch_device(struct sim_detect_drvdata *ddata)
-{
-	int error = 0;
-
-	ddata->sim_detect.name = SIM_DETECT_DEV_NAME;
-	ddata->sim_detect.state = SWITCH_OFF;
-	error = switch_dev_register(&ddata->sim_detect);
-	if (error) {
-		dev_err(ddata->dev, "%s cannot regist lid(%d)\n",
-			__func__, error);
-	}
-	return error;
-}
-
-static ssize_t sim_attrs_current_state_read(struct device *dev,
-					    struct device_attribute *attr,
-					    char *buf)
+static ssize_t sim_state_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
 {
 	struct sim_detect_drvdata *ddata = dev_get_drvdata(dev);
 	return snprintf(buf, PAGE_SIZE, "%d\n", ddata->current_state);
 }
 
-static struct device_attribute sim_state_attr[] = {
-	__ATTR(sim_state, S_IRUGO, sim_attrs_current_state_read, NULL),
+static DEVICE_ATTR_RO(sim_state);
+
+static struct attribute *sim_detect_attrs[] = {
+	&dev_attr_sim_state.attr,
+	NULL,
+};
+
+static struct attribute_group sim_detect_attr_group = {
+	.attrs = sim_detect_attrs,
 };
 
 static int sim_detect_probe(struct platform_device *pdev)
@@ -358,17 +346,17 @@ static int sim_detect_probe(struct platform_device *pdev)
 	if (!pdata) {
 		error = sim_detect_get_devtree(&pdev->dev, &alt_pdata);
 		if (error)
-			goto fail;
+			return error;
 		pdata = &alt_pdata;
 	}
 
-	ddata = kzalloc(sizeof(struct sim_detect_drvdata) +
+	ddata = devm_kzalloc(&pdev->dev, sizeof(struct sim_detect_drvdata) +
 			pdata->n_events * sizeof(struct sim_detect_event_data),
 			GFP_KERNEL);
 	if (!ddata) {
 		dev_err(&pdev->dev, "failed to allocate drvdata in probe\n");
 		error = -ENOMEM;
-		goto fail;
+		goto fail_free_pdata;
 	}
 
 	ddata->dev = &pdev->dev;
@@ -377,11 +365,12 @@ static int sim_detect_probe(struct platform_device *pdev)
 	mutex_init(&ddata->lock);
 
 	platform_set_drvdata(pdev, ddata);
-	dev_set_drvdata(ddata->dev, ddata);
 
 	if (IS_ERR(ddata->key_pinctrl)) {
-		if (PTR_ERR(ddata->key_pinctrl) == -EPROBE_DEFER)
-			goto fail_pinctrl;
+		if (PTR_ERR(ddata->key_pinctrl) == -EPROBE_DEFER) {
+			error = -EPROBE_DEFER;
+			goto fail_mutex;
+		}
 		pr_debug("Target does not use pinctrl\n");
 		ddata->key_pinctrl = NULL;
 	}
@@ -391,22 +380,30 @@ static int sim_detect_probe(struct platform_device *pdev)
 		if (error) {
 			dev_err(ddata->dev,
 				"cannot set ts pinctrl active state\n");
-			goto fail_pinctrl;
+			goto fail_mutex;
 		}
 	}
 
-	error = sim_detect_set_switch_device(ddata);
-	if (error) {
-		dev_err(ddata->dev, "%s cannot set switch dev(%d)\n",
-			__func__, error);
-		goto fail_set_switch;
+	/* Allocate extcon device */
+	ddata->edev = devm_extcon_dev_allocate(ddata->dev, sim_extcon_cable);
+	if (IS_ERR(ddata->edev)) {
+		error = PTR_ERR(ddata->edev);
+		dev_err(ddata->dev, "failed to allocate extcon device\n");
+		goto fail_pinctrl;
 	}
 
-	error = device_create_file(ddata->dev, sim_state_attr);
+	/* Register extcon device */
+	error = devm_extcon_dev_register(ddata->dev, ddata->edev);
 	if (error) {
-		dev_err(ddata->dev, "%s: create_file failed %d\n",
+		dev_err(ddata->dev, "failed to register extcon device\n");
+		goto fail_pinctrl;
+	}
+
+	error = sysfs_create_group(&ddata->dev->kobj, &sim_detect_attr_group);
+	if (error) {
+		dev_err(ddata->dev, "%s: sysfs_create_group failed %d\n",
 			__func__, error);
-		goto fail_device_create_file;
+		goto fail_pinctrl;
 	}
 
 	for (i = 0; i < pdata->n_events; i++) {
@@ -422,30 +419,30 @@ static int sim_detect_probe(struct platform_device *pdev)
 	}
 	ddata->current_state = sim_detect_gpio_read(ddata);
 
-	dev_warn(ddata->dev, "sim_detect driver was successful.\n");
+	/* Set initial state */
+	extcon_set_state_sync(ddata->edev, EXTCON_MECHANICAL,
+			      ddata->current_state > 0);
+
+	dev_info(ddata->dev, "sim_detect driver was successful.\n");
 	return 0;
 
 fail_setup_event:
-	device_remove_file(ddata->dev, sim_state_attr);
-fail_device_create_file:
-	switch_dev_unregister(&ddata->sim_detect);
-fail_set_switch:
+	while (--i >= 0)
+		sim_detect_remove_event(&ddata->data[i]);
+	sysfs_remove_group(&ddata->dev->kobj, &sim_detect_attr_group);
+fail_pinctrl:
 	if (ddata->key_pinctrl) {
 		set_state =
 		pinctrl_lookup_state(ddata->key_pinctrl,
 						"tlmm_sim_detect_suspend");
-		if (IS_ERR(set_state))
-			dev_err(ddata->dev, "cannot get pinctrl sleep state\n");
-		else
+		if (!IS_ERR(set_state))
 			pinctrl_select_state(ddata->key_pinctrl, set_state);
 	}
-	while (--i >= 0)
-		sim_detect_remove_event(&ddata->data[i]);
-	platform_set_drvdata(pdev, NULL);
-fail_pinctrl:
+fail_mutex:
 	mutex_destroy(&ddata->lock);
-	kzfree(ddata);
-fail:
+fail_free_pdata:
+	if (!pdev->dev.platform_data && pdata)
+		kfree(pdata->events);
 	return error;
 }
 
@@ -453,27 +450,36 @@ static int sim_detect_remove(struct platform_device *pdev)
 {
 	int i;
 	struct sim_detect_drvdata *ddata = platform_get_drvdata(pdev);
+	struct sim_detect_platform_data *pdata = pdev->dev.platform_data;
 
-	device_remove_file(ddata->dev, sim_state_attr);
-	switch_dev_unregister(&ddata->sim_detect);
-	mutex_destroy(&ddata->lock);
+	sysfs_remove_group(&ddata->dev->kobj, &sim_detect_attr_group);
+
 	for (i = 0; i < ddata->n_events; i++)
 		sim_detect_remove_event(&ddata->data[i]);
-	if (!pdev->dev.platform_data)
+
+	if (ddata->key_pinctrl) {
+		struct pinctrl_state *set_state =
+			pinctrl_lookup_state(ddata->key_pinctrl,
+					     "tlmm_sim_detect_suspend");
+		if (!IS_ERR(set_state))
+			pinctrl_select_state(ddata->key_pinctrl, set_state);
+	}
+
+	mutex_destroy(&ddata->lock);
+
+	if (!pdata && ddata->data[0].event)
 		kfree(ddata->data[0].event);
-	kzfree(ddata);
 
 	return 0;
 }
 
-static int sim_detect_suspend(struct platform_device *pdev, pm_message_t state)
+static int __maybe_unused sim_detect_suspend(struct device *dev)
 {
-	struct sim_detect_drvdata *ddata = platform_get_drvdata(pdev);
+	struct sim_detect_drvdata *ddata = dev_get_drvdata(dev);
 	int ret = 0;
 
 	if (atomic_read(&ddata->detection_in_progress)) {
-		dev_dbg(&pdev->dev, "detection in progress. (%s)\n",
-			__func__);
+		dev_dbg(dev, "detection in progress. (%s)\n", __func__);
 		ret = -EAGAIN;
 		goto out;
 	}
@@ -481,56 +487,47 @@ static int sim_detect_suspend(struct platform_device *pdev, pm_message_t state)
 	if (ddata->key_pinctrl) {
 		ret = sim_detect_pinctrl_configure(ddata, false);
 		if (ret)
-			dev_err(&pdev->dev, "failed to put the pin\n");
+			dev_err(dev, "failed to put the pin\n");
 	}
 
 out:
 	return ret;
 }
 
-static int sim_detect_resume(struct platform_device *pdev)
+static int __maybe_unused sim_detect_resume(struct device *dev)
 {
-	struct sim_detect_drvdata *ddata = platform_get_drvdata(pdev);
+	struct sim_detect_drvdata *ddata = dev_get_drvdata(dev);
 	int ret = 0;
 
 	if (ddata->key_pinctrl) {
 		ret = sim_detect_pinctrl_configure(ddata, true);
 		if (ret)
-			dev_err(&pdev->dev, "failed to put the pin\n");
+			dev_err(dev, "failed to put the pin\n");
 	}
 
 	return ret;
 }
 
-static struct of_device_id sim_detect_match_table[] = {
-	{	.compatible = "sim-detect",
-	},
-	{}
+static SIMPLE_DEV_PM_OPS(sim_detect_pm_ops, sim_detect_suspend, sim_detect_resume);
+
+static const struct of_device_id sim_detect_match_table[] = {
+	{ .compatible = "sim-detect", },
+	{ }
 };
+MODULE_DEVICE_TABLE(of, sim_detect_match_table);
 
 static struct platform_driver sim_detect_driver = {
 	.probe = sim_detect_probe,
 	.remove = sim_detect_remove,
-	.suspend = sim_detect_suspend,
-	.resume = sim_detect_resume,
 	.driver = {
 		.name = SIM_DETECT_DEV_NAME,
-		.owner = THIS_MODULE,
+		.pm = &sim_detect_pm_ops,
 		.of_match_table = sim_detect_match_table,
 	},
 };
 
-static int __init sim_detect_init(void)
-{
-	return platform_driver_register(&sim_detect_driver);
-}
-
-static void __exit sim_detect_exit(void)
-{
-	platform_driver_unregister(&sim_detect_driver);
-}
-
-late_initcall(sim_detect_init);
-module_exit(sim_detect_exit);
+module_platform_driver(sim_detect_driver);
 
 MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("SIM card detection driver");
+MODULE_AUTHOR("Atsushi Iyogi <atsushi.x.iyogi@sonymobile.com>");
