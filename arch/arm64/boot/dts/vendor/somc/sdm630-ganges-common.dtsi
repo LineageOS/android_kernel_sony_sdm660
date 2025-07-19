@@ -124,6 +124,10 @@
 	restart@10ac000 {
 		qcom,force-warm-reboot;
 	};
+
+	qmi-tmd-devices {
+		/delete-node/ cdsp;
+	};
 };
 
 &pm660l_wled {
@@ -151,7 +155,9 @@
 	hw-config = "single_dsi";
 };
 
-
+&thermal_zones {
+	/delete-node/ cdsp-usr;
+};
 
 &pmx_mdss{
 	mdss_dsi_active: mdss_dsi_active {
