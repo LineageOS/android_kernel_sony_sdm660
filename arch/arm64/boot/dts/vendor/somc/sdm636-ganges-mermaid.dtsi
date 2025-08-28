@@ -47,36 +47,6 @@
 		linux,max-uv = <1900000>;
 	};
 
-	qcom,sensor-information {
-		sensor_information15: qcom,sensor-information-15 { /* msm_therm */
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information16: qcom,sensor-information-16 { /* xo_therm */
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information17: qcom,sensor-information-17 { /* pa_therm0 */
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information18: qcom,sensor-information-18 { /* pa_therm1 */
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information19: qcom,sensor-information-19 { /* quiet_therm */
-			qcom,alias-name = "bl_therm";
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information100: qcom,sensor-information-100 { /* emmc_therm */
-			qcom,sensor-type = "adc";
-			qcom,sensor-name = "emmc_therm";
-			qcom,scaling-factor = <1000>;
-		};
-		sensor_information102: qcom,sensor-information-101 { /* bms */
-			qcom,sensor-type = "adc";
-			qcom,sensor-name = "bms";
-			qcom,alias-name = "batt_therm";
-			qcom,scaling-factor = <1000>;
-		};
-	};
-
 	qusb_phy0: qusb@c012000 {
 		qcom,tune2-efuse-num-bits = <0>;
 		qcom,tune2-efuse-correction = <0>;
@@ -104,40 +74,6 @@
 
 &sdhc_2 {
 	cd-gpios = <&tlmm 54 0x0>;
-};
-
-&pm660_vadc {
-	chan@50 {
-		label = "pa_therm1";
-		reg = <0x50>;
-		qcom,decimation = <2>;
-		qcom,pre-div-channel-scaling = <0>;
-		qcom,calibration-type = "ratiometric";
-		qcom,scale-function = <17>;
-		qcom,hw-settle-time = <2>;
-		qcom,fast-avg-setup = <0>;
-		qcom,vadc-thermal-node;
-	};
-
-	chan@51 { /* quiet_therm */
-		qcom,scale-function = <17>;
-	};
-
-	chan@4e { /* emmc_therm */
-		qcom,scale-function = <17>;
-	};
-
-	chan@4f { /* pa_therm0 */
-		qcom,scale-function = <17>;
-	};
-
-	chan@4d { /* msm_therm */
-		qcom,scale-function = <17>;
-	};
-
-	chan@4c { /* xo_therm */
-		qcom,scale-function = <18>;
-	};
 };
 
 &int_codec {
