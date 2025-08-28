@@ -155,10 +155,6 @@
 	hw-config = "single_dsi";
 };
 
-&thermal_zones {
-	/delete-node/ cdsp-usr;
-};
-
 &pmx_mdss{
 	mdss_dsi_active: mdss_dsi_active {
 		mux {
