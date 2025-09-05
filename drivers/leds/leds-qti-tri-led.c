@@ -446,6 +446,7 @@ err_out:
 static int qpnp_tri_led_hw_init(struct qpnp_tri_led_chip *chip)
 {
 	int rc = 0;
+	int i = 0;
 	u8 val;
 
 	rc = qpnp_tri_led_read(chip, TRILED_REG_TYPE, &val);
@@ -463,6 +464,16 @@ static int qpnp_tri_led_hw_init(struct qpnp_tri_led_chip *chip)
 	if (rc < 0) {
 		dev_err(chip->dev, "Read REG_SUBTYPE failed, rc=%d\n", rc);
 		return rc;
+	}
+
+	for (i = 0; i < chip->num_leds; i++) {
+		rc = qpnp_tri_led_masked_write(chip, TRILED_REG_EN_CTL,
+								1 << (TRILED_EN_CTL_MAX_BIT - i), val);
+		if (rc < 0) {
+			dev_err(chip->dev, "Update addr 0x%x failed, rc=%d\n",
+						TRILED_REG_EN_CTL, rc);
+			return rc;
+		}
 	}
 
 	chip->subtype = val;
