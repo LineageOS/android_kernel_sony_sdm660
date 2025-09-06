@@ -27,7 +27,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#include <linux/qpnp-misc.h>
+#include <linux/qpnp/qpnp-misc.h>
 #include <linux/qpnp/qpnp-revid.h>
 
 /* Register definitions */
