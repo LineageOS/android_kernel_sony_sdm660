@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "610dce92_bd63902e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16779
+      },
+      "writtenOn": "2025-09-08T17:37:48Z",
+      "side": 1,
+      "message": "iirc having warm reset enabled caused weird issues like battery percentage being inaccurate, you probably should do something like this instead:\n\nhttps://review.lineageos.org/c/LineageOS/android_kernel_xiaomi_sm6125/+/432555",
+      "revId": "8cbab404a9a3fca355e7778de8f5125b84450d85",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
