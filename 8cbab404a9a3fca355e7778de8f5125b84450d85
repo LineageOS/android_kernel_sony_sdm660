@@ -16,6 +16,24 @@
       "message": "iirc having warm reset enabled caused weird issues like battery percentage being inaccurate, you probably should do something like this instead:\n\nhttps://review.lineageos.org/c/LineageOS/android_kernel_xiaomi_sm6125/+/432555",
       "revId": "8cbab404a9a3fca355e7778de8f5125b84450d85",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "72d3f447_abc676d1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2025-09-08T17:39:49Z",
+      "side": 1,
+      "message": "hmm, I used to have broken otg with this change on 4.4, but I don\u0027t see any issues on 4.19 yet.",
+      "parentUuid": "610dce92_bd63902e",
+      "revId": "8cbab404a9a3fca355e7778de8f5125b84450d85",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
