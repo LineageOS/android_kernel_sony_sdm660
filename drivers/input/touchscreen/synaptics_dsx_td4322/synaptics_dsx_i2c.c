@@ -250,7 +250,7 @@ static int synaptics_rmi4_i2c_alloc_buf(struct synaptics_rmi4_data *rmi4_data,
 	if (count > buf_size) {
 		if (buf_size)
 			kfree(wr_buf);
-		wr_buf = kzalloc(count, GFP_KERNEL);
+		wr_buf = kzalloc(count, GFP_KERNEL | GFP_DMA);
 		if (!wr_buf) {
 			TP_LOGE("Failed to alloc mem for buffer\n");
 			buf_size = 0;
@@ -323,6 +323,8 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 	int retval;
 	unsigned char retry;
 	unsigned char buf;
+	unsigned char *dma_safe_buf = NULL;
+	bool use_temp_buf = false;
 #ifdef I2C_BURST_LIMIT
 	unsigned char ii;
 	unsigned char rd_msgs = ((length - 1) / I2C_BURST_LIMIT) + 1;
@@ -339,7 +341,21 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 	struct i2c_adapter *adap = i2c->adapter;
 	struct i2c_msg msg[2];
 
-	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
+	if (!rmi4_data || !data || length == 0) {
+		TP_LOGE("Invalid parameters\n");
+		return -EINVAL;
+	}
+
+	if (!virt_addr_valid(data) || !IS_ALIGNED((unsigned long)data, sizeof(void*))) {
+		dma_safe_buf = kzalloc(length, GFP_KERNEL | GFP_DMA);
+		if (!dma_safe_buf) {
+			TP_LOGE("Failed to alloc DMA safe buffer\n");
+			return -ENOMEM;
+		}
+		use_temp_buf = true;
+	}
+
+	mutex_lock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	retval = synaptics_rmi4_i2c_set_page(rmi4_data, addr);
 	if (retval != PAGE_SELECT_LEN) {
@@ -357,7 +373,10 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		msg[ii + 1].addr = hw_if.board_data->i2c_addr;
 		msg[ii + 1].flags = I2C_M_RD;
 		msg[ii + 1].len = I2C_BURST_LIMIT;
-		msg[ii + 1].buf = &data[data_offset];
+		if (use_temp_buf)
+			msg[ii + 1].buf = &dma_safe_buf[data_offset];
+		else
+			msg[ii + 1].buf = &data[data_offset];
 		data_offset += I2C_BURST_LIMIT;
 		remaining_length -= I2C_BURST_LIMIT;
 	}
@@ -366,11 +385,16 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 	msg[rd_msgs].addr = hw_if.board_data->i2c_addr;
 	msg[rd_msgs].flags = I2C_M_RD;
 	msg[rd_msgs].len = remaining_length;
-	msg[rd_msgs].buf = &data[data_offset];
+	if (use_temp_buf)
+		msg[rd_msgs].buf = &dma_safe_buf[data_offset];
+	else
+		msg[rd_msgs].buf = &data[data_offset];
 
 	buf = addr & MASK_8BIT;
 
 	remaining_msgs = rd_msgs + 1;
+
+	smp_wmb();
 
 	while (remaining_msgs) {
 #ifdef XFER_MSGS_LIMIT
@@ -411,10 +435,19 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		index += xfer_msgs;
 	}
 
+	smp_rmb();
+
+	if (use_temp_buf) {
+		memcpy(data, dma_safe_buf, length);
+	}
+
 	retval = length;
 
 exit:
-	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
+	if (dma_safe_buf)
+		kfree(dma_safe_buf);
+
+	mutex_unlock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	return retval;
 }
@@ -424,14 +457,31 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 {
 	int retval;
 	unsigned char retry;
+	unsigned char *dma_safe_buf = NULL;
+	bool use_temp_buf = false;
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
 	struct i2c_msg msg[1];
+
+	if (!rmi4_data || !data || length == 0) {
+		TP_LOGE("Invalid parameters\n");
+		return -EINVAL;
+	}
 
 	retval = synaptics_rmi4_i2c_alloc_buf(rmi4_data, length + 1);
 	if (retval < 0)
 		return retval;
 
-	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
+	if (!virt_addr_valid(data) || !IS_ALIGNED((unsigned long)data, sizeof(void*))) {
+		dma_safe_buf = kzalloc(length, GFP_KERNEL | GFP_DMA);
+		if (!dma_safe_buf) {
+			TP_LOGE("Failed to alloc DMA safe buffer\n");
+			return -ENOMEM;
+		}
+		memcpy(dma_safe_buf, data, length);
+		use_temp_buf = true;
+	}
+
+	mutex_lock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	retval = synaptics_rmi4_i2c_set_page(rmi4_data, addr);
 	if (retval != PAGE_SELECT_LEN) {
@@ -445,11 +495,17 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 	msg[0].buf = wr_buf;
 
 	wr_buf[0] = addr & MASK_8BIT;
-	retval = secure_memcpy(&wr_buf[1], length, &data[0], length, length);
+	if (use_temp_buf) {
+		retval = secure_memcpy(&wr_buf[1], length, dma_safe_buf, length, length);
+	} else {
+		retval = secure_memcpy(&wr_buf[1], length, &data[0], length, length);
+	}
 	if (retval < 0) {
 		TP_LOGE("Failed to copy data\n");
 		goto exit;
 	}
+
+	smp_wmb();
 
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(i2c->adapter, msg, 1) == 1) {
@@ -470,8 +526,13 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		retval = -EIO;
 	}
 
+	smp_rmb();
+
 exit:
-	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
+	if (dma_safe_buf)
+		kfree(dma_safe_buf);
+
+	mutex_unlock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	return retval;
 }

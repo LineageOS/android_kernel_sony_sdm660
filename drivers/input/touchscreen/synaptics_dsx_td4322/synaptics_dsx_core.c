@@ -1877,7 +1877,16 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_device_info *rmi;
 
+	if (!rmi4_data) {
+		TP_LOGE("Invalid rmi4_data\n");
+		return;
+	}
+
 	rmi = &(rmi4_data->rmi4_mod_info);
+	if (!rmi) {
+		TP_LOGE("Invalid rmi4_mod_info\n");
+		return;
+	}
 
 	/*
 	 * Get interrupt status information from F01 Data1 register to
@@ -1926,6 +1935,10 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data,
 	 */
 	if (!list_empty(&rmi->support_fn_list)) {
 		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+			if (!fhandler) {
+				TP_LOGW("Null fhandler in list\n");
+				continue;
+			}
 			if (fhandler->num_of_data_sources) {
 				if (fhandler->intr_mask &
 						intr[fhandler->intr_reg_num]) {
@@ -1939,7 +1952,7 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data,
 	mutex_lock(&exp_data.mutex);
 	if (!list_empty(&exp_data.list)) {
 		list_for_each_entry(exp_fhandler, &exp_data.list, link) {
-			if (!exp_fhandler->insert &&
+			if (exp_fhandler && !exp_fhandler->insert &&
 					!exp_fhandler->remove &&
 					(exp_fhandler->exp_fn->attn != NULL))
 				exp_fhandler->exp_fn->attn(rmi4_data, intr[0]);
@@ -1953,11 +1966,19 @@ static void synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data,
 static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 {
 	struct synaptics_rmi4_data *rmi4_data = data;
-	const struct synaptics_dsx_board_data *bdata =
-			rmi4_data->hw_if->board_data;
+	const struct synaptics_dsx_board_data *bdata;
+
+	if (!rmi4_data || !rmi4_data->hw_if || !rmi4_data->hw_if->board_data) {
+		TP_LOGE("Invalid rmi4_data in IRQ handler\n");
+		return IRQ_NONE;
+	}
+
+	bdata = rmi4_data->hw_if->board_data;
 
 	if (gpio_get_value(bdata->irq_gpio) != bdata->irq_on_state)
 		goto exit;
+
+	smp_rmb();
 
 	synaptics_rmi4_sensor_report(rmi4_data, true);
 
@@ -2005,8 +2026,14 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 {
 	int retval = 0;
 	unsigned char data[MAX_INTR_REGISTERS];
-	const struct synaptics_dsx_board_data *bdata =
-			rmi4_data->hw_if->board_data;
+	const struct synaptics_dsx_board_data *bdata;
+
+	if (!rmi4_data || !rmi4_data->hw_if || !rmi4_data->hw_if->board_data) {
+		TP_LOGE("Invalid rmi4_data\n");
+		return -EINVAL;
+	}
+
+	bdata = rmi4_data->hw_if->board_data;
 
 	mutex_lock(&(rmi4_data->rmi4_irq_enable_mutex));
 
@@ -2044,13 +2071,16 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		retval = synaptics_rmi4_int_enable(rmi4_data, true);
-		if (retval < 0)
+		if (retval < 0) {
+			free_irq(rmi4_data->irq, rmi4_data);
 			goto exit;
+		}
 
 		rmi4_data->irq_enabled = true;
 	} else {
 		if (rmi4_data->irq_enabled) {
-			disable_irq(rmi4_data->irq);
+			disable_irq_nosync(rmi4_data->irq);
+			synchronize_irq(rmi4_data->irq);
 			free_irq(rmi4_data->irq, rmi4_data);
 			rmi4_data->irq_enabled = false;
 		}
@@ -4545,8 +4575,21 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 {
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data = platform_get_drvdata(pdev);
-	const struct synaptics_dsx_board_data *bdata =
-			rmi4_data->hw_if->board_data;
+	const struct synaptics_dsx_board_data *bdata;
+
+	if (!rmi4_data) {
+		TP_LOGE("Invalid rmi4_data\n");
+		return -EINVAL;
+	}
+
+	bdata = rmi4_data->hw_if->board_data;
+
+	if (rmi4_data->irq_enabled) {
+		disable_irq_nosync(rmi4_data->irq);
+		synchronize_irq(rmi4_data->irq);
+		free_irq(rmi4_data->irq, rmi4_data);
+		rmi4_data->irq_enabled = false;
+	}
 
 #ifdef FB_READY_RESET
 	cancel_work_sync(&rmi4_data->reset_work);
@@ -4573,8 +4616,6 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 		kobject_put(rmi4_data->board_prop_dir);
 	}
 
-	synaptics_rmi4_irq_enable(rmi4_data, false, false);
-
 #ifdef CONFIG_FB
 	fb_unregister_client(&rmi4_data->fb_notifier);
 #endif
@@ -4584,23 +4625,31 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 #endif
 
 	synaptics_rmi4_empty_fn_list(rmi4_data);
-	input_unregister_device(rmi4_data->input_dev);
-	rmi4_data->input_dev = NULL;
-	if (rmi4_data->stylus_enable) {
+
+	if (rmi4_data->input_dev) {
+		input_unregister_device(rmi4_data->input_dev);
+		rmi4_data->input_dev = NULL;
+	}
+
+	if (rmi4_data->stylus_enable && rmi4_data->stylus_dev) {
 		input_unregister_device(rmi4_data->stylus_dev);
 		rmi4_data->stylus_dev = NULL;
 	}
 
-	synaptics_rmi4_gpio_setup(bdata->irq_gpio, false, 0, 0);
+	if (bdata) {
+		synaptics_rmi4_gpio_setup(bdata->irq_gpio, false, 0, 0);
 
-	if (bdata->reset_gpio >= 0)
-		synaptics_rmi4_gpio_setup(bdata->reset_gpio, false, 0, 0);
+		if (bdata->reset_gpio >= 0)
+			synaptics_rmi4_gpio_setup(bdata->reset_gpio, false, 0, 0);
 
-	if (bdata->power_gpio >= 0)
-		synaptics_rmi4_gpio_setup(bdata->power_gpio, false, 0, 0);
+		if (bdata->power_gpio >= 0)
+			synaptics_rmi4_gpio_setup(bdata->power_gpio, false, 0, 0);
+	}
 
 	synaptics_rmi4_enable_reg(rmi4_data, false);
 	synaptics_rmi4_get_reg(rmi4_data, false);
+
+	platform_set_drvdata(pdev, NULL);
 
 	kfree(rmi4_data);
 
