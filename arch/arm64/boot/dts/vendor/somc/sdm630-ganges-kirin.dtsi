@@ -113,18 +113,6 @@
 	};
 };
 
-&usb3 {
-	dwc3@a800000 {
-		maximum-speed = "high-speed";
-	};
-};
-
-&usb3 {
-	dwc3@a800000 {
-		maximum-speed = "high-speed";
-	};
-};
-
 &tlmm {
 };
 
