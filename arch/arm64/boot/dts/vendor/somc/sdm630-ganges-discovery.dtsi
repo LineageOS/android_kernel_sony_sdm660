@@ -22,17 +22,6 @@
 		ceihwid_vcc-supply = <&pm660l_l6>;
 	};
 
-	s5712 {
-		compatible = "s5712-switch";
-		interrupt-parent = <&tlmm>;
-		interrupts = <75 0x3>;
-		//vddio-supply = <&pm660l_l14>;
-		linux,gpio-int = <&tlmm 75 0x1>;
-		linux,wakeup;
-		linux,min-uv = <1700000>;
-		linux,max-uv = <1900000>;
-	};
-
 	int_codec: sound {
 		qcom,msm-micbias1-ext-cap;
 		/delete-property/ qcom,msm-micbias2-ext-cap;
