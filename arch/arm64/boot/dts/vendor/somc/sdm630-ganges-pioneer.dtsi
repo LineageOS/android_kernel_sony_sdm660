@@ -126,12 +126,6 @@
 	};
 };
 
-&usb3 {
-	dwc3@a800000 {
-		maximum-speed = "high-speed";
-	};
-};
-
 &pm660_vadc {
 	chan@50 {
 		label = "pa_therm1";
