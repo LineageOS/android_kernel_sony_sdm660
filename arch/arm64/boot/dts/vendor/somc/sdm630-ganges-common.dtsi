@@ -30,6 +30,17 @@
 		pinctrl-2 = <>;
 	};
 
+	s5712 {
+		compatible = "s5712-switch";
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x3>;
+		//vddio-supply = <&pm660l_l14>;
+		linux,gpio-int = <&tlmm 75 0x1>;
+		linux,wakeup;
+		linux,min-uv = <1700000>;
+		linux,max-uv = <1900000>;
+	};
+
 	mdss_dsi: qcom,mdss_dsi@0 {
 		mdss_dsi0: qcom,mdss_dsi_ctrl0@c994000 {
 			vddio-supply = <&pm660_l11>;
