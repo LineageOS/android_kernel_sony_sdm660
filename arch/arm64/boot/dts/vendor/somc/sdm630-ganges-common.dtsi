@@ -132,10 +132,6 @@
 			0x00 0x18>;
 	};
 
-	restart@10ac000 {
-		qcom,force-warm-reboot;
-	};
-
 	qmi-tmd-devices {
 		/delete-node/ cdsp;
 	};
