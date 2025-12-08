@@ -157,7 +157,7 @@ static irqreturn_t fp_eint_func(int irq, void *dev_id)
 		mod_timer(&fps_ints.timer,jiffies + msecs_to_jiffies(fps_ints.detect_period));
 	fps_ints.int_count++;
 	DEBUG_PRINT("[ETS] fp_eint_func, fps_ints.int_count=%d",fps_ints.int_count);
-	__pm_wakeup_event(et510_wake_lock, msecs_to_jiffies(1500));
+	__pm_wakeup_event(et510_wake_lock, 1500);
 	return IRQ_HANDLED;
 }
 
@@ -171,7 +171,7 @@ static irqreturn_t fp_eint_func_ll(int irq , void *dev_id)
 	
 	wake_up_interruptible(&interrupt_waitq);
 	//fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
-	__pm_wakeup_event(et510_wake_lock, msecs_to_jiffies(1500));
+	__pm_wakeup_event(et510_wake_lock, 1500);
 	return IRQ_RETVAL(IRQ_HANDLED);
 }
 
