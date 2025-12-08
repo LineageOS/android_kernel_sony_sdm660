@@ -35,7 +35,7 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
-#include <linux/pm_wakeup.h>
+#include <linux/device.h>
 #include <linux/cei_hw_id.h>
 
 #define FPC_TTW_HOLD_TIME 1000
@@ -455,8 +455,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
 	if (atomic_read(&fpc1020->wakeup_enabled)) {
-		__pm_wakeup_event(fpc1020->ttw_wl,
-					msecs_to_jiffies(FPC_TTW_HOLD_TIME));
+		__pm_wakeup_event(fpc1020->ttw_wl, FPC_TTW_HOLD_TIME);
 	}
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
