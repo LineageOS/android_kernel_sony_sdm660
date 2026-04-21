@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e019bea2_7a5cf0c9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2026-04-21T11:04:14Z",
+      "side": 1,
+      "message": "https://github.com/sonyxperiadev/kernel-copyleft/blob/50.2.A.3.xxx/drivers/misc/qseecom.c#L2563-L2566",
+      "revId": "9de8f95217f29a2d0c07ff89bbca799f51a8f56b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
