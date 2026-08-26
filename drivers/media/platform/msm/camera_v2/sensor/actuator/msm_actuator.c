@@ -357,7 +357,6 @@ static int32_t msm_actuator_get_eeprom_data(struct msm_actuator_ctrl_t *o_ctrl, 
 	uint32_t moduleVer_reg = 0x010;
 	uint32_t oisCali_reg = 0xC98;
 	uint16_t moduleVer_data = 0;
-	uint8_t oisCali_data[44];
 	int32_t rc = 0;
 
 	CDBG("Enter\n");
@@ -378,11 +377,9 @@ static int32_t msm_actuator_get_eeprom_data(struct msm_actuator_ctrl_t *o_ctrl, 
 
 	/* read OIS calibration data */
 	rc = o_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
-			&o_ctrl->i2c_client, oisCali_reg, oisCali_data, 44);
+			&o_ctrl->i2c_client, oisCali_reg, data, 44);
 	if (rc < 0)
 		pr_err("Read module version failed, rc:%d\n", rc);
-
-	data = oisCali_data;
 
 	/* restore ois i2c addr and addr type */
 	o_ctrl->i2c_client.cci_client->sid = save_addr;
