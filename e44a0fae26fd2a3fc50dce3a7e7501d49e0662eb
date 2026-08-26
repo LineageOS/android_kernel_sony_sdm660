@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c7f94ec_5bca0c7d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2026-08-26T23:42:53Z",
+      "side": 1,
+      "message": "fixes FFC 1-\u003e2 switch on discovery, now it doesn\u0027t get in 30s retry loop.",
+      "revId": "e44a0fae26fd2a3fc50dce3a7e7501d49e0662eb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
