@@ -546,7 +546,7 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 			memcpy(&conf_array,
 				(void *)cdata->cfg.settings,
 				sizeof(struct msm_camera_i2c_seq_reg_setting));
-		}
+		} else
 #endif
 		if (copy_from_user(&conf_array,
 			(void __user *)cdata->cfg.settings,
@@ -916,11 +916,14 @@ static long msm_ois_subdev_do_ioctl(
 			settings.delay = settings32.delay;
 			settings.size = settings32.size;
 
-			settings.reg_setting = memdup_user((void __user *)
-				compat_ptr(settings32.reg_setting),
-				sizeof(struct msm_camera_i2c_seq_reg_array));
-			if (IS_ERR(settings.reg_setting))
-				return PTR_ERR(settings.reg_setting);
+			/*
+			 * Keep the user pointer here: msm_ois_config() copies
+			 * in 'size' entries itself after validating size. Only
+			 * duplicating a single entry (and handing down a kernel
+			 * pointer) makes that copy fail and leaks the buffer.
+			 */
+			settings.reg_setting =
+				compat_ptr(settings32.reg_setting);
 			ois_data.cfg.settings = &settings;
 			parg = &ois_data;
 			break;
