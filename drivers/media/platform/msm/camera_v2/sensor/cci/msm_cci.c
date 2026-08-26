@@ -195,6 +195,14 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 			pr_err("%s:%d wait failed %d\n", __func__, __LINE__,
 				rc);
 	}
+
+	/*
+	 * Halting the master resets it, which clears its I2C timing
+	 * registers. Invalidate the cached frequency mode so the next
+	 * transfer programs them again instead of running the bus with
+	 * the hardware defaults.
+	 */
+	cci_dev->i2c_freq_mode[master] = I2C_MAX_MODES;
 }
 
 static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
@@ -1365,6 +1373,13 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 			if (rc <= 0)
 				pr_err("%s:%d wait failed %d\n", __func__,
 					__LINE__, rc);
+			/*
+			 * The master reset restored the I2C timing registers
+			 * to their defaults, so the cached frequency mode no
+			 * longer describes the hardware. Drop it so that the
+			 * next transfer reprograms the timing parameters.
+			 */
+			cci_dev->i2c_freq_mode[master] = I2C_MAX_MODES;
 			mutex_unlock(&cci_dev->cci_master_info[
 					master].mutex_q[SYNC_QUEUE]);
 			mutex_unlock(&cci_dev->cci_master_info[
@@ -1427,11 +1442,29 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 		goto reg_enable_failed;
 	}
 
-	/* Re-initialize the completion */
-	reinit_completion(&cci_dev->cci_master_info[master].reset_complete);
-	for (i = 0; i < NUM_QUEUES; i++)
-		reinit_completion(&cci_dev->cci_master_info[
-				master].report_q[i]);
+	/*
+	 * Re-initialize the completions and the queue state of every master.
+	 * This path resets the whole CCI block below, so all masters start
+	 * from scratch. Only clearing the state of the master this ioctl came
+	 * in for is not enough: 'master' is still MASTER_0 here, so MASTER_1
+	 * would keep whatever was left behind by the previous session. An
+	 * extra completion left on reset_complete/report_q (e.g. posted by the
+	 * halt-ack -> master-reset -> reset-done sequence that follows an I2C
+	 * NACK) makes the next wait return immediately, so the transfer is
+	 * reported as done without any data having been moved.
+	 */
+	for (i = 0; i < MASTER_MAX; i++) {
+		cci_dev->cci_master_info[i].status = 0;
+		cci_dev->cci_master_info[i].reset_pending = FALSE;
+		reinit_completion(&cci_dev->cci_master_info[i].reset_complete);
+		for (j = 0; j < NUM_QUEUES; j++) {
+			atomic_set(&cci_dev->cci_master_info[i].q_free[j], 0);
+			atomic_set(&cci_dev->cci_master_info[
+					i].done_pending[j], 0);
+			reinit_completion(&cci_dev->cci_master_info[
+					i].report_q[j]);
+		}
+	}
 	rc = msm_camera_enable_irq(cci_dev->irq, true);
 	if (rc < 0)
 		pr_err("%s: irq enable failed\n", __func__);
@@ -1794,11 +1827,15 @@ static irqreturn_t msm_cci_irq(int irq_num, void *data)
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M0_Q0Q1_HALT_ACK_BMSK) {
 		cci_dev->cci_master_info[MASTER_0].reset_pending = TRUE;
+		/* The reset below clears the I2C timing registers */
+		cci_dev->i2c_freq_mode[MASTER_0] = I2C_MAX_MODES;
 		msm_camera_io_w_mb(CCI_M0_RESET_RMSK,
 			cci_dev->base + CCI_RESET_CMD_ADDR);
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M1_Q0Q1_HALT_ACK_BMSK) {
 		cci_dev->cci_master_info[MASTER_1].reset_pending = TRUE;
+		/* The reset below clears the I2C timing registers */
+		cci_dev->i2c_freq_mode[MASTER_1] = I2C_MAX_MODES;
 		msm_camera_io_w_mb(CCI_M1_RESET_RMSK,
 			cci_dev->base + CCI_RESET_CMD_ADDR);
 	}
