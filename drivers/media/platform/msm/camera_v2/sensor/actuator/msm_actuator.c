@@ -49,6 +49,7 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 	defined(CONFIG_MACH_SONY_VOYAGER_DSDS)
 #define OIS_7B 1
 #define OIS_5B 2
+#define OIS_CALI_DATA_SIZE 44
 
 static int OIS_FW_FLAG;
 #endif
@@ -357,7 +358,6 @@ static int32_t msm_actuator_get_eeprom_data(struct msm_actuator_ctrl_t *o_ctrl, 
 	uint32_t moduleVer_reg = 0x010;
 	uint32_t oisCali_reg = 0xC98;
 	uint16_t moduleVer_data = 0;
-	uint8_t oisCali_data[44];
 	int32_t rc = 0;
 
 	CDBG("Enter\n");
@@ -367,8 +367,10 @@ static int32_t msm_actuator_get_eeprom_data(struct msm_actuator_ctrl_t *o_ctrl, 
 
 	rc = o_ctrl->i2c_client.i2c_func_tbl->i2c_read(
 			&o_ctrl->i2c_client, moduleVer_reg, &moduleVer_data, MSM_CAMERA_I2C_WORD_DATA);
-	if (rc < 0)
+	if (rc < 0) {
 		pr_err("Read module version failed, rc:%d\n", rc);
+		goto restore_addr;
+	}
 
 	CDBG("moduleVer_data: 0x%x\n", moduleVer_data);
 	if (((moduleVer_data & 0xFF00) >> 8) >= 16 && (moduleVer_data & 0xFF) >= 4)
@@ -378,12 +380,12 @@ static int32_t msm_actuator_get_eeprom_data(struct msm_actuator_ctrl_t *o_ctrl, 
 
 	/* read OIS calibration data */
 	rc = o_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
-			&o_ctrl->i2c_client, oisCali_reg, oisCali_data, 44);
+			&o_ctrl->i2c_client, oisCali_reg, data,
+			OIS_CALI_DATA_SIZE);
 	if (rc < 0)
 		pr_err("Read module version failed, rc:%d\n", rc);
 
-	data = oisCali_data;
-
+restore_addr:
 	/* restore ois i2c addr and addr type */
 	o_ctrl->i2c_client.cci_client->sid = save_addr;
 
@@ -400,7 +402,7 @@ static int32_t msm_actuator_ois_download(struct msm_actuator_ctrl_t *o_ctrl)
 	uint16_t ois_cali_reg = 0x1DC0;
 	uint8_t *ptr = NULL;
 	uint8_t checksum[4];
-	uint8_t ois_cali_data[44];
+	uint8_t ois_cali_data[OIS_CALI_DATA_SIZE];
 	int32_t rc, i = 0;
 	const struct firmware *fw = NULL;
 	const char *fw_name_prog = NULL;
@@ -417,8 +419,10 @@ static int32_t msm_actuator_ois_download(struct msm_actuator_ctrl_t *o_ctrl)
 	fw_tx_size = o_ctrl->oboard_info->fw_tx_size;
 
 	rc = msm_actuator_get_eeprom_data(o_ctrl, ois_cali_data);
-	if (rc < 0)
+	if (rc < 0) {
+		o_ctrl->i2c_client.addr_type = save_addr_type;
 		return rc;
+	}
 
 	rc = 0;
 	if (OIS_FW_FLAG == OIS_7B) {
@@ -500,7 +504,7 @@ release_firmware:
 		CDBG("checksum = 0x%x\n", checksum[i]);
 
 	/* Download OIS calibration data */
-	total_bytes = 44;
+	total_bytes = OIS_CALI_DATA_SIZE;
 	for (ptr = ois_cali_data; total_bytes;
 		total_bytes -= bytes_in_tx, ptr += bytes_in_tx) {
 		bytes_in_tx = (total_bytes > fw_tx_size) ? fw_tx_size : total_bytes;
